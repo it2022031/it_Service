@@ -13,7 +13,9 @@
 **/tests/coverage
 .vscode
 **/resourceRegistry.log
-.turbo
+# Turborepo local cache (may appear at repo root and under packages)
+**/.turbo
+/.turbo
 .DS_Store
 **/env/
  
