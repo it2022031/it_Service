@@ -7,24 +7,24 @@ import {
     status,
     UnparsedRouterResponse,
 } from '@conduitplatform/grpc-sdk';
-import { RoutingManager } from '@conduitplatform/module-tools';
+import { ConduitString, RoutingManager } from '@conduitplatform/module-tools';
 import { User } from '@it-service/common-types/lib/User.js';
 import { UserRole } from '@it-service/common-types/lib/enums/UserRole.js';
 
-import { ExampleHandlers } from '../handlers/exampleHandlers.js';
+import { EquipmentHandlers } from '../handlers/index.js';
 
 export class BasicRouter {
-    private readonly exampleHandlers: ExampleHandlers;
+    private readonly equipmentHandlers: EquipmentHandlers;
 
     constructor(
         grpcSdk: ConduitGrpcSdk,
         private readonly routingManager: RoutingManager,
     ) {
-        this.exampleHandlers = new ExampleHandlers(grpcSdk);
+        this.equipmentHandlers = new EquipmentHandlers(grpcSdk);
         this.registerRoutes();
     }
 
-    private async exampleAdminMiddleware(
+    private async AdminMiddleware(
         call: ParsedRouterRequest,
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };
@@ -42,11 +42,47 @@ export class BasicRouter {
 
         return {};
     }
+    private async EmployeeMiddleware(
+        call: ParsedRouterRequest,
+    ): Promise<UnparsedRouterResponse> {
+        const { user } = call.request.context as { user: User };
+
+        if (!user) {
+            throw new GrpcError(status.UNAUTHENTICATED, 'Authentication required');
+        }
+
+        if (user.role !== UserRole.EMPLOYEE) {
+            throw new GrpcError(
+                status.PERMISSION_DENIED,
+                'Endpoint requires employee role',
+            );
+        }
+
+        return {};
+    }
+    private async ItStaffMiddleware(
+        call: ParsedRouterRequest,
+    ): Promise<UnparsedRouterResponse> {
+        const { user } = call.request.context as { user: User };
+
+        if (!user) {
+            throw new GrpcError(status.UNAUTHENTICATED, 'Authentication required');
+        }
+
+        if (user.role !== UserRole.IT_STAFF) {
+            throw new GrpcError(
+                status.PERMISSION_DENIED,
+                'Endpoint requires it staff role',
+            );
+        }
+
+        return {};
+    }
 
     private registerRoutes() {
         this.routingManager.middleware(
-            { path: '/', name: 'exampleAdminMiddleware' },
-            this.exampleAdminMiddleware.bind(this),
+            { path: '/', name: 'AdminMiddleware' },
+            this.AdminMiddleware.bind(this),
         );
 
         this.routingManager.route(
@@ -55,10 +91,36 @@ export class BasicRouter {
                 action: ConduitRouteActions.GET,
                 description:
                     'Example authenticated route (admin only) — demo for interns',
-                middlewares: ['authMiddleware', 'exampleAdminMiddleware'],
+                middlewares: ['authMiddleware', 'AdminMiddleware'],
             },
             new ConduitRouteReturnDefinition('ExampleStatusResponse', 'example'),
-            this.exampleHandlers.getExampleStatus.bind(this.exampleHandlers),
+            this.equipmentHandlers.getExampleStatus.bind(this.equipmentHandlers),
+        );
+        // this.routingManager.route(
+        //     {
+        //         path: '/equipment/create',
+        //         action: ConduitRouteActions.POST,
+        //         description: 'Creates a new equipment',
+        //         middlewares: ['authMiddleware', 'AdminMiddleware'],
+        //     },
+        //     new ConduitRouteReturnDefinition('CreateEquipmentResponse', 'example'),
+        //     this.equipmentHandlers.createEquipment.bind(this.equipmentHandlers),
+        // );
+        this.routingManager.route(
+            {
+                path: '/equipment/create',
+                action: ConduitRouteActions.POST,
+                description: 'Creates a new equipment',
+                bodyParams: {
+                    name: ConduitString.Required,
+                    description: ConduitString.Required,
+                    availability: ConduitString.Required,
+                    status: ConduitString.Required,
+                },
+                middlewares: ['authMiddleware', 'AdminMiddleware'],
+            },
+            new ConduitRouteReturnDefinition('CreateEquipmentResponse', 'example'),
+            this.equipmentHandlers.createEquipment.bind(this.equipmentHandlers),
         );
     }
 }

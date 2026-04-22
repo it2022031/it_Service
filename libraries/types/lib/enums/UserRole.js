@@ -3,6 +3,7 @@
  */
 export var UserRole;
 (function (UserRole) {
+    UserRole["EMPLOYEE"] = "employee";
+    UserRole["IT_STAFF"] = "itStaff";
     UserRole["ADMIN"] = "admin";
-    UserRole["USER"] = "user";
 })(UserRole || (UserRole = {}));

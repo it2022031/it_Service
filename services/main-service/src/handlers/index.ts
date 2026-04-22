@@ -1,1 +1,1 @@
-export { ExampleHandlers } from './exampleHandlers.js';
+export { EquipmentHandlers } from './EquipmentHandlers.js';
