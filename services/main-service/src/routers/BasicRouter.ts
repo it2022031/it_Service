@@ -11,20 +11,22 @@ import { ConduitString, RoutingManager } from '@conduitplatform/module-tools';
 import { User } from '@it-service/common-types/lib/User.js';
 import { UserRole } from '@it-service/common-types/lib/enums/UserRole.js';
 
-import { EquipmentHandlers } from '../handlers/index.js';
+import { EquipmentHandlers , RoleHandlers } from '../handlers/index.js';
 
 export class BasicRouter {
     private readonly equipmentHandlers: EquipmentHandlers;
+    private readonly roleHandlers: RoleHandlers;
 
     constructor(
         grpcSdk: ConduitGrpcSdk,
         private readonly routingManager: RoutingManager,
     ) {
         this.equipmentHandlers = new EquipmentHandlers(grpcSdk);
+        this.roleHandlers = new RoleHandlers(grpcSdk);
         this.registerRoutes();
     }
 
-    private async AdminMiddleware(
+    private async inAppAdminMiddleware(
         call: ParsedRouterRequest,
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };
@@ -81,8 +83,8 @@ export class BasicRouter {
 
     private registerRoutes() {
         this.routingManager.middleware(
-            { path: '/', name: 'AdminMiddleware' },
-            this.AdminMiddleware.bind(this),
+            { path: '/', name: 'inAppAdminMiddleware' },
+            this.inAppAdminMiddleware.bind(this),
         );
 
         this.routingManager.route(
@@ -91,21 +93,11 @@ export class BasicRouter {
                 action: ConduitRouteActions.GET,
                 description:
                     'Example authenticated route (admin only) — demo for interns',
-                middlewares: ['authMiddleware', 'AdminMiddleware'],
+                middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
             new ConduitRouteReturnDefinition('ExampleStatusResponse', 'example'),
             this.equipmentHandlers.getExampleStatus.bind(this.equipmentHandlers),
         );
-        // this.routingManager.route(
-        //     {
-        //         path: '/equipment/create',
-        //         action: ConduitRouteActions.POST,
-        //         description: 'Creates a new equipment',
-        //         middlewares: ['authMiddleware', 'AdminMiddleware'],
-        //     },
-        //     new ConduitRouteReturnDefinition('CreateEquipmentResponse', 'example'),
-        //     this.equipmentHandlers.createEquipment.bind(this.equipmentHandlers),
-        // );
         this.routingManager.route(
             {
                 path: '/equipment/create',
@@ -113,14 +105,26 @@ export class BasicRouter {
                 description: 'Creates a new equipment',
                 bodyParams: {
                     name: ConduitString.Required,
+                    //@ts-ignore
                     description: ConduitString.Required,
                     availability: ConduitString.Required,
                     status: ConduitString.Required,
                 },
-                middlewares: ['authMiddleware', 'AdminMiddleware'],
+                middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
             new ConduitRouteReturnDefinition('CreateEquipmentResponse', 'example'),
             this.equipmentHandlers.createEquipment.bind(this.equipmentHandlers),
         );
+        this.routingManager.route(
+            {
+                path: '/user/role',
+                action: ConduitRouteActions.GET,
+                description: 'Returns current user role',
+                middlewares: ['authMiddleware'],
+            },
+            new ConduitRouteReturnDefinition('GetUserRoleResponse', 'example'),
+            this.roleHandlers.getMyRole.bind(this.roleHandlers),
+        );
     }
 }
+
