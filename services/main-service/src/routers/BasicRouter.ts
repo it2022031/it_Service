@@ -156,6 +156,38 @@ export class BasicRouter {
             new ConduitRouteReturnDefinition('ViewAvailableEquipmentResponse', 'example'),
             this.equipmentHandlers.viewAvailableEquipment.bind(this.equipmentHandlers),
         );
+        this.routingManager.route(
+            {
+                path: '/equipment/mark-returned',
+                action: ConduitRouteActions.PATCH,
+                description: 'Marks equipment as returned',
+                bodyParams: {
+                    equipmentId: ConduitString.Required,
+                },
+                middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
+            },
+            new ConduitRouteReturnDefinition(
+                'MarkReturnedEquipmentResponse',
+                'example',
+            ),
+            this.equipmentHandlers.markReturnedEquipment.bind(this.equipmentHandlers),
+        );
+        this.routingManager.route(
+            {
+                path: '/equipment/delete',
+                action: ConduitRouteActions.DELETE,
+                description: 'Deletes an equipment',
+                bodyParams: {
+                    equipmentId: ConduitString.Required,
+                },
+                middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
+            },
+            new ConduitRouteReturnDefinition(
+                'DeleteEquipmentResponse',
+                'example',
+            ),
+            this.equipmentHandlers.deleteEquipment.bind(this.equipmentHandlers),
+        );
     }
 }
 
