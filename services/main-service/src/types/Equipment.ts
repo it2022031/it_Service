@@ -11,3 +11,4 @@ export type EquipmentRecord = {
     createdAt?: string | Date;
     updatedAt?: string | Date;
 };
+

@@ -9,3 +9,4 @@ export type LendingRecord = {
     createdAt?: string | Date;
     updatedAt?: string | Date;
 };
+

@@ -87,31 +87,68 @@ export class EquipmentHandlers {
         );
 
         return {
-            example: {
-                userId: user._id,
-                message: 'Equipment is created.',
-                equipment,
-            },
+            userId: user._id,
+            message: 'Equipment is created.',
+            equipment,
         };
     }
-    async viewAvailableEquipment(
+    async listEquipment(
         call: ParsedRouterRequest,
     ): Promise<UnparsedRouterResponse> {
 
+        const { status, availability, skip, limit } = call.request.queryParams as {
+            status?: string;
+            availability?: string;
+            skip?: string;
+            limit?: string;
+        };
+
+        const query: any = {};
+
+        // availability filter (with default)
+        if (availability) {
+            if (!Object.values(EquipmentAvailability).includes(availability as EquipmentAvailability)) {
+                throw new GrpcError(
+                    GrpcStatus.INVALID_ARGUMENT,
+                    'Invalid availability value',
+                );
+            }
+            query.availability = availability;
+        } else {
+            query.availability = EquipmentAvailability.ACTIVE;
+        }
+
+        // status filter
+        if (status) {
+            if (!Object.values(EquipmentStatus).includes(status as EquipmentStatus)) {
+                throw new GrpcError(
+                    GrpcStatus.INVALID_ARGUMENT,
+                    'Invalid status value',
+                );
+            }
+            query.status = status;
+        }
+
+        const parsedSkip = skip ? parseInt(skip) : 0;
+        const parsedLimit = limit ? parseInt(limit) : 10;
+
         const equipment = await this.grpcSdk.database!.findMany(
             'Equipment',
+            query,
+            undefined,
+            undefined,
             {
-                status: EquipmentStatus.AVAILABLE,
-                availability: EquipmentAvailability.ACTIVE,
-            },
+                skip: parsedSkip,
+                limit: parsedLimit,
+            } as any,
         );
 
         return {
-            example: {
-                message: 'Available equipment fetched successfully.',
-                count: equipment?.length ?? 0,
-                equipment,
-            },
+            message: 'Equipment fetched successfully.',
+            count: equipment?.length ?? 0,
+            skip: parsedSkip,
+            limit: parsedLimit,
+            equipment,
         };
     }
     async markReturnedEquipment(
@@ -119,16 +156,14 @@ export class EquipmentHandlers {
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };
 
-        const { equipmentId } = call.request.bodyParams as {
-            equipmentId?: string;
+        const { id: equipmentId } = call.request.params as {
+            id: string;
         };
-
 
         const existingEquipment = await this.grpcSdk.database!.findOne<EquipmentRecord>(
             'Equipment',
             { _id: equipmentId },
         );
-
 
         if (!existingEquipment) {
             throw new GrpcError(GrpcStatus.NOT_FOUND, 'Equipment not found');
@@ -149,47 +184,37 @@ export class EquipmentHandlers {
             },
         );
 
-
-        await this.grpcSdk.database!.updateOne(
+        const updatedEquipment = await this.grpcSdk.database!.findByIdAndUpdate<EquipmentRecord>(
             'Equipment',
-            { _id: equipmentId },
+            equipmentId,
             {
-                status: EquipmentStatus.AVAILABLE,
-                lentTo: null,
+                $set: {
+                    status: EquipmentStatus.AVAILABLE,
+                },
+                $unset: {
+                    lentTo: '',
+                },
             } as any,
             undefined,
             user._id,
         );
 
-        if (activeLending) {
-            await this.grpcSdk.database!.updateOne(
+        const updatedLending = activeLending
+            ? await this.grpcSdk.database!.findByIdAndUpdate<LendingRecord>(
                 'Lending',
-                { _id: activeLending._id },
+                activeLending._id,
                 {
                     requestStatus: LendingStatus.COMPLETED,
                 } as any,
                 undefined,
                 user._id,
-            );
-        }
-
-        const updatedEquipment = await this.grpcSdk.database!.findOne<EquipmentRecord>(
-            'Equipment',
-            { _id: equipmentId },
-        );
-
-        const updatedLending = activeLending
-            ? await this.grpcSdk.database!.findOne<LendingRecord>('Lending', {
-                _id: activeLending._id,
-            })
-            : null;
+            )
+            : undefined;
 
         return {
-            example: {
-                message: 'Equipment marked as returned successfully.',
-                equipment: updatedEquipment,
-                lending: updatedLending,
-            },
+            message: 'Equipment marked as returned successfully.',
+            equipment: updatedEquipment,
+            lending: updatedLending,
         };
     }
     async deleteEquipment(
@@ -197,9 +222,7 @@ export class EquipmentHandlers {
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };
 
-        const { equipmentId } = call.request.bodyParams as {
-            equipmentId?: string;
-        };
+        const { id: equipmentId } = call.request.params;
 
         const existingEquipment = await this.grpcSdk.database!.findOne<EquipmentRecord>(
             'Equipment',
@@ -209,6 +232,12 @@ export class EquipmentHandlers {
         if (!existingEquipment) {
             throw new GrpcError(GrpcStatus.NOT_FOUND, 'Equipment not found');
         }
+        if (existingEquipment.status === EquipmentStatus.UNAVAILABLE) {
+            throw new GrpcError(
+                GrpcStatus.FAILED_PRECONDITION,
+                'Cannot delete equipment that is currently lent out',
+            );
+        }
 
         await this.grpcSdk.database!.deleteOne(
             'Equipment',
@@ -217,11 +246,11 @@ export class EquipmentHandlers {
         );
 
         return {
-            example: {
-                message: 'Equipment deleted successfully.',
-                equipmentId,
-            },
+            message: 'Equipment deleted successfully.',
+            equipmentId,
         };
     }
 
 }
+
+

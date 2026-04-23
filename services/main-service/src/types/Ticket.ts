@@ -10,3 +10,4 @@ export type TicketRecord = {
     createdAt?: string | Date;
     updatedAt?: string | Date;
 };
+
