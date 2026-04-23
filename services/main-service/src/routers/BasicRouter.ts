@@ -127,9 +127,9 @@ export class BasicRouter {
                 bodyParams: {
                     name: ConduitString.Required,
                     //@ts-ignore
-                    description: ConduitString.Required,
+                    description: ConduitString.Optional,
                     availability: ConduitString.Required,
-                    status: ConduitString.Required,
+                    status: ConduitString.Optional,
                 },
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },

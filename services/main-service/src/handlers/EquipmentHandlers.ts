@@ -8,6 +8,9 @@ import {
 import { User } from '@it-service/common-types/lib/User.js';
 import type {  LendingRecord } from '../types/Lending.js';
 import type {  EquipmentRecord  } from '../types/Equipment.js';
+import {EquipmentAvailability} from "@it-service/common-types/lib/enums/EquipmentAvailability.js";
+import {EquipmentStatus} from "@it-service/common-types/lib/enums/EquipmentStatus.js";
+import {LendingStatus} from "@it-service/common-types/lib/enums/LendingStatus.js";
 
 /**
  * Example handler class: inject `grpcSdk`, read route context, use the database API.
@@ -54,32 +57,20 @@ export class EquipmentHandlers {
             status?: string;
         };
 
-        if (!name || typeof name !== 'string') {
-            throw new GrpcError(GrpcStatus.INVALID_ARGUMENT, 'Name is required');
-        }
-
-        if (!availability || typeof availability !== 'string') {
-            throw new GrpcError(GrpcStatus.INVALID_ARGUMENT, 'Availability is required');
-        }
-
-        if (!['active', 'retired'].includes(availability)) {
+        if (!Object.values(EquipmentAvailability).includes(availability as EquipmentAvailability)) {
             throw new GrpcError(
                 GrpcStatus.INVALID_ARGUMENT,
                 'Availability must be active or retired',
             );
         }
 
-        if (status !== undefined && !['available', 'unavailable'].includes(status)) {
+        if (
+            status !== undefined &&
+            !Object.values(EquipmentStatus).includes(status as EquipmentStatus)
+        ) {
             throw new GrpcError(
                 GrpcStatus.INVALID_ARGUMENT,
                 'Status must be available or unavailable',
-            );
-        }
-
-        if (description !== undefined && typeof description !== 'string') {
-            throw new GrpcError(
-                GrpcStatus.INVALID_ARGUMENT,
-                'Description must be a string',
             );
         }
 
@@ -87,7 +78,7 @@ export class EquipmentHandlers {
             name,
             description,
             availability,
-            status: status ?? 'unavailable',
+            status: status ?? EquipmentStatus.UNAVAILABLE,
         };
 
         const equipment = await this.grpcSdk.database!.create(
@@ -110,8 +101,8 @@ export class EquipmentHandlers {
         const equipment = await this.grpcSdk.database!.findMany(
             'Equipment',
             {
-                status: 'available',
-                availability: 'active',
+                status: EquipmentStatus.AVAILABLE,
+                availability: EquipmentAvailability.ACTIVE,
             },
         );
 
@@ -133,44 +124,37 @@ export class EquipmentHandlers {
         };
 
 
-        if (!equipmentId || typeof equipmentId !== 'string') {
-            throw new GrpcError(
-                GrpcStatus.INVALID_ARGUMENT,
-                'equipmentId is required',
-            );
-        }
-
-        const existingEquipment = (await this.grpcSdk.database!.findOne(
+        const existingEquipment = await this.grpcSdk.database!.findOne<EquipmentRecord>(
             'Equipment',
             { _id: equipmentId },
-        )) as EquipmentRecord | null;
+        );
 
 
         if (!existingEquipment) {
             throw new GrpcError(GrpcStatus.NOT_FOUND, 'Equipment not found');
         }
 
-        if (existingEquipment.status !== 'unavailable') {
+        if (existingEquipment.status !== EquipmentStatus.UNAVAILABLE) {
             throw new GrpcError(
                 GrpcStatus.FAILED_PRECONDITION,
                 'Equipment is not currently lent out',
             );
         }
 
-        const activeLending = (await this.grpcSdk.database!.findOne(
+        const activeLending = await this.grpcSdk.database!.findOne<LendingRecord>(
             'Lending',
             {
                 equipment: equipmentId,
-                requestStatus: 'approved',
+                requestStatus: LendingStatus.APPROVED,
             },
-        )) as LendingRecord | null;
+        );
 
 
         await this.grpcSdk.database!.updateOne(
             'Equipment',
             { _id: equipmentId },
             {
-                status: 'available',
+                status: EquipmentStatus.AVAILABLE,
                 lentTo: null,
             } as any,
             undefined,
@@ -182,20 +166,20 @@ export class EquipmentHandlers {
                 'Lending',
                 { _id: activeLending._id },
                 {
-                    requestStatus: 'completed',
+                    requestStatus: LendingStatus.COMPLETED,
                 } as any,
                 undefined,
                 user._id,
             );
         }
 
-        const updatedEquipment = await this.grpcSdk.database!.findOne(
+        const updatedEquipment = await this.grpcSdk.database!.findOne<EquipmentRecord>(
             'Equipment',
             { _id: equipmentId },
         );
 
         const updatedLending = activeLending
-            ? await this.grpcSdk.database!.findOne('Lending', {
+            ? await this.grpcSdk.database!.findOne<LendingRecord>('Lending', {
                 _id: activeLending._id,
             })
             : null;
@@ -217,15 +201,7 @@ export class EquipmentHandlers {
             equipmentId?: string;
         };
 
-
-        if (!equipmentId || typeof equipmentId !== 'string') {
-            throw new GrpcError(
-                GrpcStatus.INVALID_ARGUMENT,
-                'equipmentId is required',
-            );
-        }
-
-        const existingEquipment = await this.grpcSdk.database!.findOne(
+        const existingEquipment = await this.grpcSdk.database!.findOne<EquipmentRecord>(
             'Equipment',
             { _id: equipmentId },
         );

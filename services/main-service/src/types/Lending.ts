@@ -1,6 +1,8 @@
+import {LendingStatus} from "@it-service/common-types/lib/enums/LendingStatus.js";
+
 export type LendingRecord = {
     _id: string;
-    requestStatus?: 'pending' | 'approved' | 'declined' | 'completed';
+    requestStatus?: LendingStatus;
     approvedAt?: string | Date;
     requestedBy?: string;
     equipment?: string;
