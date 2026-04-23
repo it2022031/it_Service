@@ -101,4 +101,30 @@ export class EquipmentHandlers {
             },
         };
     }
+    async viewAvailableEquipment(
+        call: ParsedRouterRequest,
+    ): Promise<UnparsedRouterResponse> {
+        const { user } = call.request.context as { user: User };
+
+        if (!user) {
+            throw new GrpcError(GrpcStatus.UNAUTHENTICATED, 'Authentication required');
+        }
+
+        const equipment = await this.grpcSdk.database!.findMany(
+            'Equipment',
+            {
+                status: 'available',
+                availability: 'active',
+            },
+        );
+
+        return {
+            example: {
+                message: 'Available equipment fetched successfully.',
+                count: equipment?.length ?? 0,
+                equipment,
+            },
+        };
+    }
+
 }

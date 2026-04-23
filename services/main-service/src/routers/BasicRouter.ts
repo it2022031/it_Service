@@ -80,13 +80,34 @@ export class BasicRouter {
 
         return {};
     }
+    private async AdminOrEmployeeMiddleware(
+        call: ParsedRouterRequest,
+    ): Promise<UnparsedRouterResponse> {
+        const { user } = call.request.context as { user: User };
+
+        if (!user) {
+            throw new GrpcError(status.UNAUTHENTICATED, 'Authentication required');
+        }
+
+        if (user.role !== 'admin' && user.role !== 'employee') {
+            throw new GrpcError(
+                status.PERMISSION_DENIED,
+                'Endpoint requires admin or employee role',
+            );
+        }
+
+        return {};
+    }
 
     private registerRoutes() {
         this.routingManager.middleware(
             { path: '/', name: 'inAppAdminMiddleware' },
             this.inAppAdminMiddleware.bind(this),
         );
-
+        this.routingManager.middleware(
+            { path: '/', name: 'AdminOrEmployeeMiddleware' },
+            this.AdminOrEmployeeMiddleware.bind(this),
+        );
         this.routingManager.route(
             {
                 path: '/example/status',
@@ -124,6 +145,16 @@ export class BasicRouter {
             },
             new ConduitRouteReturnDefinition('GetUserRoleResponse', 'example'),
             this.roleHandlers.getMyRole.bind(this.roleHandlers),
+        );
+        this.routingManager.route(
+            {
+                path: '/equipment/available',
+                action: ConduitRouteActions.GET,
+                description: 'Returns all available equipment',
+                middlewares: ['authMiddleware', 'AdminOrEmployeeMiddleware'],
+            },
+            new ConduitRouteReturnDefinition('ViewAvailableEquipmentResponse', 'example'),
+            this.equipmentHandlers.viewAvailableEquipment.bind(this.equipmentHandlers),
         );
     }
 }
