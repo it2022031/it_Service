@@ -106,11 +106,6 @@ export class EquipmentHandlers {
     async viewAvailableEquipment(
         call: ParsedRouterRequest,
     ): Promise<UnparsedRouterResponse> {
-        const { user } = call.request.context as { user: User };
-
-        if (!user) {
-            throw new GrpcError(GrpcStatus.UNAUTHENTICATED, 'Authentication required');
-        }
 
         const equipment = await this.grpcSdk.database!.findMany(
             'Equipment',
@@ -137,12 +132,6 @@ export class EquipmentHandlers {
             equipmentId?: string;
         };
 
-        if (!user) {
-            throw new GrpcError(
-                GrpcStatus.UNAUTHENTICATED,
-                'Authentication required',
-            );
-        }
 
         if (!equipmentId || typeof equipmentId !== 'string') {
             throw new GrpcError(
@@ -228,12 +217,6 @@ export class EquipmentHandlers {
             equipmentId?: string;
         };
 
-        if (!user) {
-            throw new GrpcError(
-                GrpcStatus.UNAUTHENTICATED,
-                'Authentication required',
-            );
-        }
 
         if (!equipmentId || typeof equipmentId !== 'string') {
             throw new GrpcError(
