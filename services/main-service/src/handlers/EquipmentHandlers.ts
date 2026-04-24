@@ -52,10 +52,10 @@ export class EquipmentHandlers {
             availability,
             status,
         } = call.request.bodyParams as {
-            name?: string;
-            description?: string;
-            availability?: string;
-            status?: string;
+            name: string;
+            description: string;
+            availability: string;
+            status: string;
         };
 
         if (!Object.values(EquipmentAvailability).includes(availability as EquipmentAvailability)) {
@@ -65,10 +65,7 @@ export class EquipmentHandlers {
             );
         }
 
-        if (
-            status !== undefined &&
-            !Object.values(EquipmentStatus).includes(status as EquipmentStatus)
-        ) {
+        if (!Object.values(EquipmentStatus).includes(status as EquipmentStatus)) {
             throw new GrpcError(
                 GrpcStatus.INVALID_ARGUMENT,
                 enumErrorMessage('Status', EquipmentStatus),
@@ -77,11 +74,9 @@ export class EquipmentHandlers {
 
         const equipmentData = {
             name,
-            availability,
-            ...(description !== undefined ? { description } : {}),
-            ...(status !== undefined
-                ? { status: status as EquipmentStatus }
-                : { status: EquipmentStatus.UNAVAILABLE }),
+            description,
+            availability: availability as EquipmentAvailability,
+            status: status as EquipmentStatus,
         };
         const equipment = await this.grpcSdk.database!.create(
             'Equipment',

@@ -3,11 +3,11 @@ import {EquipmentStatus} from "@it-service/common-types/lib/enums/EquipmentStatu
 
 export type EquipmentRecord = {
     _id: string;
-    name?: string;
-    description?: string;
-    availability?: EquipmentAvailability;
-    status?: EquipmentStatus;
-    lentTo?: string | null;
+    name: string;
+    description: string;
+    availability: EquipmentAvailability;
+    status: EquipmentStatus;
+    lentTo?: string;
     createdAt?: string | Date;
     updatedAt?: string | Date;
 };
