@@ -11,6 +11,7 @@ import type {  EquipmentRecord  } from '../types/Equipment.js';
 import {EquipmentAvailability} from "@it-service/common-types/lib/enums/EquipmentAvailability.js";
 import {EquipmentStatus} from "@it-service/common-types/lib/enums/EquipmentStatus.js";
 import {LendingStatus} from "@it-service/common-types/lib/enums/LendingStatus.js";
+import {enumErrorMessage} from "../utils/ErrorMessage.js";
 
 /**
  * Example handler class: inject `grpcSdk`, read route context, use the database API.
@@ -60,7 +61,7 @@ export class EquipmentHandlers {
         if (!Object.values(EquipmentAvailability).includes(availability as EquipmentAvailability)) {
             throw new GrpcError(
                 GrpcStatus.INVALID_ARGUMENT,
-                'Availability must be active or retired',
+                enumErrorMessage('Availability', EquipmentAvailability),
             );
         }
 
@@ -70,17 +71,18 @@ export class EquipmentHandlers {
         ) {
             throw new GrpcError(
                 GrpcStatus.INVALID_ARGUMENT,
-                'Status must be available or unavailable',
+                enumErrorMessage('Status', EquipmentStatus),
             );
         }
 
         const equipmentData = {
             name,
-            description,
             availability,
-            status: status ?? EquipmentStatus.UNAVAILABLE,
+            ...(description !== undefined ? { description } : {}),
+            ...(status !== undefined
+                ? { status: status as EquipmentStatus }
+                : { status: EquipmentStatus.UNAVAILABLE }),
         };
-
         const equipment = await this.grpcSdk.database!.create(
             'Equipment',
             equipmentData,
@@ -95,59 +97,55 @@ export class EquipmentHandlers {
     async listEquipment(
         call: ParsedRouterRequest,
     ): Promise<UnparsedRouterResponse> {
-
         const { status, availability, skip, limit } = call.request.queryParams as {
             status?: string;
             availability?: string;
-            skip?: string;
-            limit?: string;
+            skip?: number;
+            limit?: number;
         };
 
-        const query: any = {};
-
-        // availability filter (with default)
-        if (availability) {
-            if (!Object.values(EquipmentAvailability).includes(availability as EquipmentAvailability)) {
-                throw new GrpcError(
-                    GrpcStatus.INVALID_ARGUMENT,
-                    'Invalid availability value',
-                );
-            }
-            query.availability = availability;
-        } else {
-            query.availability = EquipmentAvailability.ACTIVE;
+        // validation
+        if (
+            availability &&
+            !Object.values(EquipmentAvailability).includes(
+                availability as EquipmentAvailability,
+            )
+        ) {
+            throw new GrpcError(
+                GrpcStatus.INVALID_ARGUMENT,
+                enumErrorMessage('Availability', EquipmentAvailability),
+            );
         }
 
-        // status filter
-        if (status) {
-            if (!Object.values(EquipmentStatus).includes(status as EquipmentStatus)) {
-                throw new GrpcError(
-                    GrpcStatus.INVALID_ARGUMENT,
-                    'Invalid status value',
-                );
-            }
-            query.status = status;
+        if (
+            status &&
+            !Object.values(EquipmentStatus).includes(
+                status as EquipmentStatus,
+            )
+        ) {
+            throw new GrpcError(
+                GrpcStatus.INVALID_ARGUMENT,
+                enumErrorMessage('Status', EquipmentStatus),
+            );
         }
 
-        const parsedSkip = skip ? parseInt(skip) : 0;
-        const parsedLimit = limit ? parseInt(limit) : 10;
-
-        const equipment = await this.grpcSdk.database!.findMany(
+        const equipment = await this.grpcSdk.database!.findMany<EquipmentRecord>(
             'Equipment',
-            query,
-            undefined,
-            undefined,
             {
-                skip: parsedSkip,
-                limit: parsedLimit,
-            } as any,
+                ...(availability
+                    ? { availability: availability as EquipmentAvailability }
+                    : {}),
+                ...(status ? { status: status as EquipmentStatus } : {}),
+            },
+            {
+                ...(skip != null ? { skip } : {}),
+                ...(limit != null ? { limit } : {}),
+            },
         );
 
         return {
             message: 'Equipment fetched successfully.',
             count: equipment?.length ?? 0,
-            skip: parsedSkip,
-            limit: parsedLimit,
             equipment,
         };
     }
@@ -184,28 +182,32 @@ export class EquipmentHandlers {
             },
         );
 
+        const equipmentReturnUpdate = {
+            $set: {
+                status: EquipmentStatus.AVAILABLE,
+            },
+            $unset: {
+                lentTo: '',
+            },
+        };
+
         const updatedEquipment = await this.grpcSdk.database!.findByIdAndUpdate<EquipmentRecord>(
             'Equipment',
             equipmentId,
-            {
-                $set: {
-                    status: EquipmentStatus.AVAILABLE,
-                },
-                $unset: {
-                    lentTo: '',
-                },
-            } as any,
+            equipmentReturnUpdate,
             undefined,
             user._id,
         );
+
+        const lendingUpdate: Partial<LendingRecord> = {
+            requestStatus: LendingStatus.COMPLETED,
+        };
 
         const updatedLending = activeLending
             ? await this.grpcSdk.database!.findByIdAndUpdate<LendingRecord>(
                 'Lending',
                 activeLending._id,
-                {
-                    requestStatus: LendingStatus.COMPLETED,
-                } as any,
+                lendingUpdate,
                 undefined,
                 user._id,
             )
@@ -222,7 +224,9 @@ export class EquipmentHandlers {
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };
 
-        const { id: equipmentId } = call.request.params;
+        const { id: equipmentId } = call.request.params as {
+            id: string;
+        };
 
         const existingEquipment = await this.grpcSdk.database!.findOne<EquipmentRecord>(
             'Equipment',
