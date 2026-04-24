@@ -169,6 +169,9 @@ export class BasicRouter {
             {
                 path: '/equipment/:id/mark-returned',
                 action: ConduitRouteActions.PATCH,
+                urlParams: {
+                    id: ConduitObjectId.Required,
+                },
                 description: 'Marks equipment as returned',
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
@@ -179,6 +182,9 @@ export class BasicRouter {
             {
                 path: '/equipment/:id',
                 action: ConduitRouteActions.DELETE,
+                urlParams: {
+                    id: ConduitObjectId.Required,
+                },
                 description: 'Deletes an equipment',
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },

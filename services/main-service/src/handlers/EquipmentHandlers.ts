@@ -12,6 +12,7 @@ import {EquipmentAvailability} from "@it-service/common-types/lib/enums/Equipmen
 import {EquipmentStatus} from "@it-service/common-types/lib/enums/EquipmentStatus.js";
 import {LendingStatus} from "@it-service/common-types/lib/enums/LendingStatus.js";
 import {enumErrorMessage} from "../utils/ErrorMessage.js";
+import {ConduitObjectId} from "@conduitplatform/module-tools";
 
 /**
  * Example handler class: inject `grpcSdk`, read route context, use the database API.
@@ -149,7 +150,7 @@ export class EquipmentHandlers {
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };
 
-        const { id: equipmentId } = call.request.params as {
+        const { id: equipmentId } = call.request.urlParams as {
             id: string;
         };
 
@@ -177,19 +178,17 @@ export class EquipmentHandlers {
             },
         );
 
-        const equipmentReturnUpdate = {
-            $set: {
-                status: EquipmentStatus.AVAILABLE,
-            },
-            $unset: {
-                lentTo: '',
-            },
+        const replacementEquipment = {
+            name: existingEquipment.name,
+            description: existingEquipment.description,
+            availability: existingEquipment.availability,
+            status: EquipmentStatus.AVAILABLE,
         };
 
-        const updatedEquipment = await this.grpcSdk.database!.findByIdAndUpdate<EquipmentRecord>(
+        const updatedEquipment = await this.grpcSdk.database!.findByIdAndReplace<EquipmentRecord>(
             'Equipment',
             equipmentId,
-            equipmentReturnUpdate,
+            replacementEquipment,
             undefined,
             user._id,
         );
@@ -219,7 +218,7 @@ export class EquipmentHandlers {
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };
 
-        const { id: equipmentId } = call.request.params as {
+        const { id: equipmentId } = call.request.urlParams as {
             id: string;
         };
 
