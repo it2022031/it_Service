@@ -7,7 +7,7 @@ import {
     status,
     UnparsedRouterResponse,
 } from '@conduitplatform/grpc-sdk';
-import {ConduitNumber, ConduitString, RoutingManager} from '@conduitplatform/module-tools';
+import {ConduitNumber, ConduitObjectId, ConduitString, RoutingManager} from '@conduitplatform/module-tools';
 import { User } from '@it-service/common-types/lib/User.js';
 import { UserRole } from '@it-service/common-types/lib/enums/UserRole.js';
 
@@ -190,8 +190,12 @@ export class BasicRouter {
                 path: '/equipment/:id',
                 action: ConduitRouteActions.PATCH,
                 description: 'Updates equipment name or description',
+                urlParams: {
+                    id: ConduitObjectId.Required,
+                },
                 bodyParams: {
                     name: ConduitString.Optional,
+                    //@ts-ignore
                     description: ConduitString.Optional,
                 },
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],

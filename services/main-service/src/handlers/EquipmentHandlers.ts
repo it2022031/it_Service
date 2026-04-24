@@ -254,7 +254,7 @@ export class EquipmentHandlers {
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };
 
-        const { id: equipmentId } = call.request.params as {
+        const { id: equipmentId } = call.request.urlParams as {
             id: string;
         };
 
