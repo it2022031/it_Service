@@ -7,7 +7,7 @@ import {
     status,
     UnparsedRouterResponse,
 } from '@conduitplatform/grpc-sdk';
-import {ConduitNumber, ConduitString, RoutingManager} from '@conduitplatform/module-tools';
+import {ConduitNumber, ConduitObjectId, ConduitString, RoutingManager} from '@conduitplatform/module-tools';
 import { User } from '@it-service/common-types/lib/User.js';
 import { UserRole } from '@it-service/common-types/lib/enums/UserRole.js';
 
@@ -169,6 +169,9 @@ export class BasicRouter {
             {
                 path: '/equipment/:id/mark-returned',
                 action: ConduitRouteActions.PATCH,
+                urlParams: {
+                    id: ConduitObjectId.Required,
+                },
                 description: 'Marks equipment as returned',
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
@@ -179,6 +182,9 @@ export class BasicRouter {
             {
                 path: '/equipment/:id',
                 action: ConduitRouteActions.DELETE,
+                urlParams: {
+                    id: ConduitObjectId.Required,
+                },
                 description: 'Deletes an equipment',
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
