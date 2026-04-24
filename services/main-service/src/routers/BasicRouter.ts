@@ -7,7 +7,7 @@ import {
     status,
     UnparsedRouterResponse,
 } from '@conduitplatform/grpc-sdk';
-import { ConduitString, RoutingManager } from '@conduitplatform/module-tools';
+import {ConduitNumber, ConduitObjectId, ConduitString, RoutingManager} from '@conduitplatform/module-tools';
 import { User } from '@it-service/common-types/lib/User.js';
 import { UserRole } from '@it-service/common-types/lib/enums/UserRole.js';
 
@@ -89,7 +89,10 @@ export class BasicRouter {
             throw new GrpcError(status.UNAUTHENTICATED, 'Authentication required');
         }
 
-        if (user.role !== 'admin' && user.role !== 'employee') {
+        if (
+            user.role !== UserRole.ADMIN &&
+            user.role !== UserRole.EMPLOYEE
+        ) {
             throw new GrpcError(
                 status.PERMISSION_DENIED,
                 'Endpoint requires admin or employee role',
@@ -148,14 +151,47 @@ export class BasicRouter {
         );
         this.routingManager.route(
             {
-                path: '/equipment/available',
+                path: '/equipment',
                 action: ConduitRouteActions.GET,
-                description: 'Returns all available equipment',
+                description: 'List equipment with optional filters and pagination',
+                queryParams: {
+                    status: ConduitString.Optional,
+                    availability: ConduitString.Optional,
+                    skip: ConduitNumber.Optional,
+                    limit: ConduitNumber.Optional,
+                },
                 middlewares: ['authMiddleware', 'AdminOrEmployeeMiddleware'],
             },
-            new ConduitRouteReturnDefinition('ViewAvailableEquipmentResponse', 'example'),
-            this.equipmentHandlers.viewAvailableEquipment.bind(this.equipmentHandlers),
+            new ConduitRouteReturnDefinition('ListEquipmentResponse'),
+            this.equipmentHandlers.listEquipment.bind(this.equipmentHandlers),
+        );
+        this.routingManager.route(
+            {
+                path: '/equipment/:id/mark-returned',
+                action: ConduitRouteActions.PATCH,
+                urlParams: {
+                    id: ConduitObjectId.Required,
+                },
+                description: 'Marks equipment as returned',
+                middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
+            },
+            new ConduitRouteReturnDefinition('MarkReturnedResponse'),
+            this.equipmentHandlers.markReturnedEquipment.bind(this.equipmentHandlers),
+        );
+        this.routingManager.route(
+            {
+                path: '/equipment/:id',
+                action: ConduitRouteActions.DELETE,
+                urlParams: {
+                    id: ConduitObjectId.Required,
+                },
+                description: 'Deletes an equipment',
+                middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
+            },
+            new ConduitRouteReturnDefinition('DeleteEquipmentResponse'),
+            this.equipmentHandlers.deleteEquipment.bind(this.equipmentHandlers),
         );
     }
 }
+
 
