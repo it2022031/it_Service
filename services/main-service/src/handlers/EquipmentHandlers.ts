@@ -249,6 +249,57 @@ export class EquipmentHandlers {
             equipmentId,
         };
     }
+    async editEquipment(
+        call: ParsedRouterRequest,
+    ): Promise<UnparsedRouterResponse> {
+        const { user } = call.request.context as { user: User };
+
+        const { id: equipmentId } = call.request.params as {
+            id: string;
+        };
+
+        const {
+            name,
+            description,
+        } = call.request.bodyParams as {
+            name?: string;
+            description?: string;
+        };
+
+        const existingEquipment = await this.grpcSdk.database!.findOne<EquipmentRecord>(
+            'Equipment',
+            { _id: equipmentId },
+        );
+
+        if (!existingEquipment) {
+            throw new GrpcError(GrpcStatus.NOT_FOUND, 'Equipment not found');
+        }
+
+        const update: Partial<EquipmentRecord> = {
+            ...(name !== undefined ? { name } : {}),
+            ...(description !== undefined ? { description } : {}),
+        };
+
+        if (Object.keys(update).length === 0) {
+            throw new GrpcError(
+                GrpcStatus.INVALID_ARGUMENT,
+                'At least one field (name or description) must be provided',
+            );
+        }
+
+        const updatedEquipment = await this.grpcSdk.database!.findByIdAndUpdate<EquipmentRecord>(
+            'Equipment',
+            equipmentId,
+            update,
+            undefined,
+            user._id,
+        );
+
+        return {
+            message: 'Equipment updated successfully.',
+            equipment: updatedEquipment,
+        };
+    }
 
 }
 

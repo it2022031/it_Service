@@ -185,6 +185,20 @@ export class BasicRouter {
             new ConduitRouteReturnDefinition('DeleteEquipmentResponse'),
             this.equipmentHandlers.deleteEquipment.bind(this.equipmentHandlers),
         );
+        this.routingManager.route(
+            {
+                path: '/equipment/:id',
+                action: ConduitRouteActions.PATCH,
+                description: 'Updates equipment name or description',
+                bodyParams: {
+                    name: ConduitString.Optional,
+                    description: ConduitString.Optional,
+                },
+                middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
+            },
+            new ConduitRouteReturnDefinition('EditEquipmentResponse'),
+            this.equipmentHandlers.editEquipment.bind(this.equipmentHandlers),
+        );
     }
 }
 
