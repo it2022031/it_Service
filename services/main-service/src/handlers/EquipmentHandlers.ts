@@ -300,6 +300,69 @@ export class EquipmentHandlers {
             equipment: updatedEquipment,
         };
     }
+    async updateAvailability(
+        call: ParsedRouterRequest,
+    ): Promise<UnparsedRouterResponse> {
+        const { user } = call.request.context as { user: User };
+
+        const { id: equipmentId } = call.request.urlParams as {
+            id: string;
+        };
+
+        const { availability } = call.request.bodyParams as {
+            availability: string;
+        };
+
+        if (
+            !Object.values(EquipmentAvailability).includes(
+                availability as EquipmentAvailability,
+            )
+        ) {
+            throw new GrpcError(
+                GrpcStatus.INVALID_ARGUMENT,
+                enumErrorMessage('Availability', EquipmentAvailability),
+            );
+        }
+
+        const existingEquipment =
+            await this.grpcSdk.database!.findOne<EquipmentRecord>(
+                'Equipment',
+                { _id: equipmentId },
+            );
+
+        if (!existingEquipment) {
+            throw new GrpcError(
+                GrpcStatus.NOT_FOUND,
+                'Equipment not found',
+            );
+        }
+
+        const nextAvailability = availability as EquipmentAvailability;
+
+        const replacementEquipment = {
+            name: existingEquipment.name,
+            description: existingEquipment.description,
+            availability: nextAvailability,
+            status:
+                nextAvailability === EquipmentAvailability.RETIRED
+                    ? EquipmentStatus.UNAVAILABLE
+                    : EquipmentStatus.AVAILABLE,
+        };
+
+        const updatedEquipment =
+            await this.grpcSdk.database!.findByIdAndReplace<EquipmentRecord>(
+                'Equipment',
+                equipmentId,
+                replacementEquipment,
+                undefined,
+                user._id,
+            );
+
+        return {
+            message: 'Equipment availability updated successfully.',
+            equipment: updatedEquipment,
+        };
+    }
 
 }
 

@@ -203,6 +203,22 @@ export class BasicRouter {
             new ConduitRouteReturnDefinition('EditEquipmentResponse'),
             this.equipmentHandlers.editEquipment.bind(this.equipmentHandlers),
         );
+        this.routingManager.route(
+            {
+                path: '/equipment/:id/availability',
+                action: ConduitRouteActions.PATCH,
+                description: 'Marks equipment as active or retired',
+                urlParams: {
+                    id: ConduitObjectId.Required,
+                },
+                bodyParams: {
+                    availability: ConduitString.Required,
+                },
+                middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
+            },
+            new ConduitRouteReturnDefinition('UpdateAvailabilityResponse'),
+            this.equipmentHandlers.updateAvailability.bind(this.equipmentHandlers),
+        );
     }
 }
 
