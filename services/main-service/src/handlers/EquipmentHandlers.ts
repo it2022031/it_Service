@@ -13,6 +13,9 @@ import {EquipmentStatus} from "@it-service/common-types/lib/enums/EquipmentStatu
 import {LendingStatus} from "@it-service/common-types/lib/enums/LendingStatus.js";
 import {enumErrorMessage} from "../utils/ErrorMessage.js";
 import {ConduitObjectId} from "@conduitplatform/module-tools";
+import {TeamRecord} from "../types/Team.js";
+import { TeamName } from '@it-service/common-types/lib/enums/TeamName.js';
+import {getTeamByName} from "../utils/Teams.js";
 
 /**
  * Example handler class: inject `grpcSdk`, read route context, use the database API.
@@ -28,9 +31,9 @@ export class EquipmentHandlers {
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };
 
-        const adminTeam = await this.grpcSdk.database!.findOne(
-            'Team',
-            { name: 'Admins' },
+        const adminTeam = await getTeamByName(
+            this.grpcSdk,
+            TeamName.ADMINS,
         );
 
         return {
@@ -79,10 +82,28 @@ export class EquipmentHandlers {
             availability: availability as EquipmentAvailability,
             status: status as EquipmentStatus,
         };
-        const equipment = await this.grpcSdk.database!.create(
+
+        const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
+        const employeesTeam = await getTeamByName(this.grpcSdk, TeamName.EMPLOYEES);
+
+        const equipment = await this.grpcSdk.database!.create<EquipmentRecord>(
             'Equipment',
             equipmentData,
+            user._id,
+            `Team:${adminTeam._id}`,
         );
+
+        await this.grpcSdk.authorization!.createRelation({
+            subject: `Team:${adminTeam._id}`,
+            relation: 'owner',
+            resource: `Equipment:${equipment._id}`,
+        });
+
+        await this.grpcSdk.authorization!.createRelation({
+            subject: `Team:${employeesTeam._id}`,
+            relation: 'reader',
+            resource: `Equipment:${equipment._id}`,
+        });
 
         return {
             userId: user._id,
@@ -330,22 +351,28 @@ export class EquipmentHandlers {
             );
 
         if (!existingEquipment) {
-            throw new GrpcError(
-                GrpcStatus.NOT_FOUND,
-                'Equipment not found',
-            );
+            throw new GrpcError(GrpcStatus.NOT_FOUND, 'Equipment not found');
         }
 
         const nextAvailability = availability as EquipmentAvailability;
+
+        if (existingEquipment.availability === nextAvailability) {
+            return {
+                message: 'Equipment availability is already set.',
+                equipment: existingEquipment,
+            };
+        }
+
+        const nextStatus =
+            nextAvailability === EquipmentAvailability.RETIRED
+                ? EquipmentStatus.UNAVAILABLE
+                : EquipmentStatus.AVAILABLE;
 
         const replacementEquipment = {
             name: existingEquipment.name,
             description: existingEquipment.description,
             availability: nextAvailability,
-            status:
-                nextAvailability === EquipmentAvailability.RETIRED
-                    ? EquipmentStatus.UNAVAILABLE
-                    : EquipmentStatus.AVAILABLE,
+            status: nextStatus,
         };
 
         const updatedEquipment =
@@ -357,9 +384,34 @@ export class EquipmentHandlers {
                 user._id,
             );
 
+        let updatedLending: LendingRecord | undefined;
+
+        if (nextAvailability === EquipmentAvailability.RETIRED) {
+            const activeLending =
+                await this.grpcSdk.database!.findOne<LendingRecord>(
+                    'Lending',
+                    {
+                        equipment: equipmentId,
+                        requestStatus: LendingStatus.APPROVED,
+                    },
+                );
+
+            updatedLending = activeLending
+                ? await this.grpcSdk.database!.findByIdAndUpdate<LendingRecord>(
+                    'Lending',
+                    activeLending._id,
+                    {
+                        requestStatus: LendingStatus.COMPLETED,
+                    },
+                    undefined,
+                    user._id,
+                )
+                : undefined;
+        }
         return {
             message: 'Equipment availability updated successfully.',
             equipment: updatedEquipment,
+            lending: updatedLending,
         };
     }
 
