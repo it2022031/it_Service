@@ -278,22 +278,10 @@ export class EquipmentHandlers {
             id: string;
         };
 
-        const {
-            name,
-            description,
-        } = call.request.bodyParams as {
+        const { name, description } = call.request.bodyParams as {
             name?: string;
             description?: string;
         };
-
-        const existingEquipment = await this.grpcSdk.database!.findOne<EquipmentRecord>(
-            'Equipment',
-            { _id: equipmentId },
-        );
-
-        if (!existingEquipment) {
-            throw new GrpcError(GrpcStatus.NOT_FOUND, 'Equipment not found');
-        }
 
         const update: Partial<EquipmentRecord> = {
             ...(name !== undefined ? { name } : {}),
@@ -307,13 +295,21 @@ export class EquipmentHandlers {
             );
         }
 
-        const updatedEquipment = await this.grpcSdk.database!.findByIdAndUpdate<EquipmentRecord>(
-            'Equipment',
-            equipmentId,
-            update,
-            undefined,
-            user._id,
-        );
+        const updatedEquipment =
+            await this.grpcSdk.database!.findByIdAndUpdate<EquipmentRecord>(
+                'Equipment',
+                equipmentId,
+                update,
+                undefined,
+                user._id,
+            );
+
+        if (!updatedEquipment) {
+            throw new GrpcError(
+                GrpcStatus.NOT_FOUND,
+                'Equipment not found',
+            );
+        }
 
         return {
             message: 'Equipment updated successfully.',
