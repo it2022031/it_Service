@@ -30,9 +30,15 @@ export default class MainService extends ManagedModule<void> {
     async onRegister() {
         this.grpcSdk.monitorModule('router', async (serving) => {
             if (!serving) return;
-            this.routingManager = new RoutingManager(this.grpcSdk.router!, this.grpcServer);
+            this.routingManager = new RoutingManager(
+                this.grpcSdk.router!,
+                this.grpcServer,
+            );
             this.routingManager.clear();
-            this.basicRouter = new BasicRouter(this.grpcSdk, this.routingManager);
+            this.basicRouter = new BasicRouter(
+                this.grpcSdk,
+                this.routingManager,
+            );
             await this.routingManager.registerRoutes();
         });
     }

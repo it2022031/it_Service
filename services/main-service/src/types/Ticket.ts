@@ -1,4 +1,4 @@
-import {TicketStatus} from "@it-service/common-types/lib/enums/TicketStatus.js";
+import { TicketStatus } from '@it-service/common-types/lib/enums/TicketStatus.js';
 
 export type TicketRecord = {
     _id: string;
@@ -10,4 +10,3 @@ export type TicketRecord = {
     createdAt?: string | Date;
     updatedAt?: string | Date;
 };
-

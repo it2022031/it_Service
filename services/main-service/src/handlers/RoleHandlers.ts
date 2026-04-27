@@ -17,13 +17,15 @@ export class RoleHandlers {
         const { user } = call.request.context as { user: User };
 
         if (!user) {
-            throw new GrpcError(status.UNAUTHENTICATED, 'Authentication required');
+            throw new GrpcError(
+                status.UNAUTHENTICATED,
+                'Authentication required',
+            );
         }
 
-        const fullUser = (await this.grpcSdk.database!.findOne(
-            'User',
-            { _id: user._id },
-        )) as User | null;
+        const fullUser = (await this.grpcSdk.database!.findOne('User', {
+            _id: user._id,
+        })) as User | null;
 
         return {
             example: {
@@ -32,7 +34,4 @@ export class RoleHandlers {
             },
         };
     }
-
-
 }
-

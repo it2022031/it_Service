@@ -1,4 +1,4 @@
-import {LendingStatus} from "@it-service/common-types/lib/enums/LendingStatus.js";
+import { LendingStatus } from '@it-service/common-types/lib/enums/LendingStatus.js';
 
 export type LendingRecord = {
     _id: string;
@@ -9,4 +9,3 @@ export type LendingRecord = {
     createdAt?: string | Date;
     updatedAt?: string | Date;
 };
-

@@ -6,16 +6,16 @@ import {
     UnparsedRouterResponse,
 } from '@conduitplatform/grpc-sdk';
 import { User } from '@it-service/common-types/lib/User.js';
-import type {  LendingRecord } from '../types/Lending.js';
-import type {  EquipmentRecord  } from '../types/Equipment.js';
-import {EquipmentAvailability} from "@it-service/common-types/lib/enums/EquipmentAvailability.js";
-import {EquipmentStatus} from "@it-service/common-types/lib/enums/EquipmentStatus.js";
-import {LendingStatus} from "@it-service/common-types/lib/enums/LendingStatus.js";
-import {enumErrorMessage} from "../utils/ErrorMessage.js";
-import {ConduitObjectId} from "@conduitplatform/module-tools";
-import {TeamRecord} from "../types/Team.js";
+import type { LendingRecord } from '../types/Lending.js';
+import type { EquipmentRecord } from '../types/Equipment.js';
+import { EquipmentAvailability } from '@it-service/common-types/lib/enums/EquipmentAvailability.js';
+import { EquipmentStatus } from '@it-service/common-types/lib/enums/EquipmentStatus.js';
+import { LendingStatus } from '@it-service/common-types/lib/enums/LendingStatus.js';
+import { enumErrorMessage } from '../utils/ErrorMessage.js';
+import { ConduitObjectId } from '@conduitplatform/module-tools';
+import { TeamRecord } from '../types/Team.js';
 import { TeamName } from '@it-service/common-types/lib/enums/TeamName.js';
-import {getTeamByName} from "../utils/Teams.js";
+import { getTeamByName } from '../utils/Teams.js';
 import { UserRole } from '@it-service/common-types/lib/enums/UserRole.js';
 
 /**
@@ -32,10 +32,7 @@ export class EquipmentHandlers {
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };
 
-        const adminTeam = await getTeamByName(
-            this.grpcSdk,
-            TeamName.ADMINS,
-        );
+        const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
 
         return {
             example: {
@@ -51,26 +48,28 @@ export class EquipmentHandlers {
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };
 
-        const {
-            name,
-            description,
-            availability,
-            status,
-        } = call.request.bodyParams as {
+        const { name, description, availability, status } = call.request
+            .bodyParams as {
             name: string;
             description: string;
             availability: string;
             status: string;
         };
 
-        if (!Object.values(EquipmentAvailability).includes(availability as EquipmentAvailability)) {
+        if (
+            !Object.values(EquipmentAvailability).includes(
+                availability as EquipmentAvailability,
+            )
+        ) {
             throw new GrpcError(
                 GrpcStatus.INVALID_ARGUMENT,
                 enumErrorMessage('Availability', EquipmentAvailability),
             );
         }
 
-        if (!Object.values(EquipmentStatus).includes(status as EquipmentStatus)) {
+        if (
+            !Object.values(EquipmentStatus).includes(status as EquipmentStatus)
+        ) {
             throw new GrpcError(
                 GrpcStatus.INVALID_ARGUMENT,
                 enumErrorMessage('Status', EquipmentStatus),
@@ -85,13 +84,15 @@ export class EquipmentHandlers {
         };
 
         const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
-        const employeesTeam = await getTeamByName(this.grpcSdk, TeamName.EMPLOYEES);
+        const employeesTeam = await getTeamByName(
+            this.grpcSdk,
+            TeamName.EMPLOYEES,
+        );
 
         const equipment = await this.grpcSdk.database!.create<EquipmentRecord>(
             'Equipment',
             equipmentData,
             user._id,
-            `Team:${adminTeam._id}`,
         );
 
         await this.grpcSdk.authorization!.createRelation({
@@ -116,7 +117,8 @@ export class EquipmentHandlers {
         call: ParsedRouterRequest,
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };
-        const { status, availability, skip, limit } = call.request.queryParams as {
+        const { status, availability, skip, limit } = call.request
+            .queryParams as {
             status?: string;
             availability?: string;
             skip?: number;
@@ -138,9 +140,7 @@ export class EquipmentHandlers {
 
         if (
             status &&
-            !Object.values(EquipmentStatus).includes(
-                status as EquipmentStatus,
-            )
+            !Object.values(EquipmentStatus).includes(status as EquipmentStatus)
         ) {
             throw new GrpcError(
                 GrpcStatus.INVALID_ARGUMENT,
@@ -148,27 +148,29 @@ export class EquipmentHandlers {
             );
         }
         const teamName =
-            user.role === UserRole.ADMIN
-                ? TeamName.ADMINS
-                : TeamName.EMPLOYEES;
+            user.role === UserRole.ADMIN ? TeamName.ADMINS : TeamName.EMPLOYEES;
 
         const team = await getTeamByName(this.grpcSdk, teamName);
 
-        const equipment = await this.grpcSdk.database!.findMany<EquipmentRecord>(
-            'Equipment',
-            {
-                ...(availability
-                    ? { availability: availability as EquipmentAvailability }
-                    : {}),
-                ...(status ? { status: status as EquipmentStatus } : {}),
-            },
-            undefined,
-            skip,
-            limit,
-            undefined,
-            user._id,
-            `Team:${team._id}`,
-        );
+        const equipment =
+            await this.grpcSdk.database!.findMany<EquipmentRecord>(
+                'Equipment',
+                {
+                    ...(availability
+                        ? {
+                              availability:
+                                  availability as EquipmentAvailability,
+                          }
+                        : {}),
+                    ...(status ? { status: status as EquipmentStatus } : {}),
+                },
+                {
+                    ...(skip != null ? { skip } : {}),
+                    ...(limit != null ? { limit } : {}),
+                    userId: user._id,
+                    scope: `Team:${team._id}`,
+                },
+            );
 
         return {
             message: 'Equipment fetched successfully.',
@@ -187,14 +189,15 @@ export class EquipmentHandlers {
         const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
         const adminScope = `Team:${adminTeam._id}`;
 
-        const existingEquipment = await this.grpcSdk.database!.findOne<EquipmentRecord>(
-            'Equipment',
-            { _id: equipmentId },
-            undefined,
-            undefined,
-            user._id,
-            adminScope,
-        );
+        const existingEquipment =
+            await this.grpcSdk.database!.findOne<EquipmentRecord>(
+                'Equipment',
+                { _id: equipmentId },
+                undefined,
+                undefined,
+                user._id,
+                adminScope,
+            );
 
         if (!existingEquipment) {
             throw new GrpcError(GrpcStatus.NOT_FOUND, 'Equipment not found');
@@ -207,17 +210,18 @@ export class EquipmentHandlers {
             );
         }
 
-        const activeLending = await this.grpcSdk.database!.findOne<LendingRecord>(
-            'Lending',
-            {
-                equipment: equipmentId,
-                requestStatus: LendingStatus.APPROVED,
-            },
-            undefined,
-            undefined,
-            user._id,
-            adminScope,
-        );
+        const activeLending =
+            await this.grpcSdk.database!.findOne<LendingRecord>(
+                'Lending',
+                {
+                    equipment: equipmentId,
+                    requestStatus: LendingStatus.APPROVED,
+                },
+                undefined,
+                undefined,
+                user._id,
+                adminScope,
+            );
 
         const replacementEquipment = {
             name: existingEquipment.name,
@@ -242,13 +246,13 @@ export class EquipmentHandlers {
 
         const updatedLending = activeLending
             ? await this.grpcSdk.database!.findByIdAndUpdate<LendingRecord>(
-                'Lending',
-                activeLending._id,
-                lendingUpdate,
-                undefined,
-                user._id,
-                adminScope,
-            )
+                  'Lending',
+                  activeLending._id,
+                  lendingUpdate,
+                  undefined,
+                  user._id,
+                  adminScope,
+              )
             : undefined;
 
         return {
@@ -268,14 +272,15 @@ export class EquipmentHandlers {
         const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
         const adminScope = `Team:${adminTeam._id}`;
 
-        const existingEquipment = await this.grpcSdk.database!.findOne<EquipmentRecord>(
-            'Equipment',
-            { _id: equipmentId },
-            undefined,
-            undefined,
-            user._id,
-            adminScope,
-        );
+        const existingEquipment =
+            await this.grpcSdk.database!.findOne<EquipmentRecord>(
+                'Equipment',
+                { _id: equipmentId },
+                undefined,
+                undefined,
+                user._id,
+                adminScope,
+            );
 
         if (!existingEquipment) {
             throw new GrpcError(GrpcStatus.NOT_FOUND, 'Equipment not found');
@@ -338,10 +343,7 @@ export class EquipmentHandlers {
             );
 
         if (!updatedEquipment) {
-            throw new GrpcError(
-                GrpcStatus.NOT_FOUND,
-                'Equipment not found',
-            );
+            throw new GrpcError(GrpcStatus.NOT_FOUND, 'Equipment not found');
         }
 
         return {
@@ -439,15 +441,15 @@ export class EquipmentHandlers {
 
             updatedLending = activeLending
                 ? await this.grpcSdk.database!.findByIdAndUpdate<LendingRecord>(
-                    'Lending',
-                    activeLending._id,
-                    {
-                        requestStatus: LendingStatus.COMPLETED,
-                    },
-                    undefined,
-                    user._id,
-                    adminScope,
-                )
+                      'Lending',
+                      activeLending._id,
+                      {
+                          requestStatus: LendingStatus.COMPLETED,
+                      },
+                      undefined,
+                      user._id,
+                      adminScope,
+                  )
                 : undefined;
         }
         return {
@@ -456,7 +458,4 @@ export class EquipmentHandlers {
             lending: updatedLending,
         };
     }
-
 }
-
-

@@ -11,16 +11,10 @@ export async function getTeamByName(
     grpcSdk: ConduitGrpcSdk,
     name: TeamName,
 ): Promise<TeamRecord> {
-    const team = await grpcSdk.database!.findOne<TeamRecord>(
-        'Team',
-        { name },
-    );
+    const team = await grpcSdk.database!.findOne<TeamRecord>('Team', { name });
 
     if (!team) {
-        throw new GrpcError(
-            GrpcStatus.NOT_FOUND,
-            `Team ${name} not found`,
-        );
+        throw new GrpcError(GrpcStatus.NOT_FOUND, `Team ${name} not found`);
     }
 
     return team;

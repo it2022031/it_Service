@@ -7,11 +7,16 @@ import {
     status,
     UnparsedRouterResponse,
 } from '@conduitplatform/grpc-sdk';
-import {ConduitNumber, ConduitObjectId, ConduitString, RoutingManager} from '@conduitplatform/module-tools';
+import {
+    ConduitNumber,
+    ConduitObjectId,
+    ConduitString,
+    RoutingManager,
+} from '@conduitplatform/module-tools';
 import { User } from '@it-service/common-types/lib/User.js';
 import { UserRole } from '@it-service/common-types/lib/enums/UserRole.js';
 
-import { EquipmentHandlers , RoleHandlers } from '../handlers/index.js';
+import { EquipmentHandlers, RoleHandlers } from '../handlers/index.js';
 
 export class BasicRouter {
     private readonly equipmentHandlers: EquipmentHandlers;
@@ -32,7 +37,10 @@ export class BasicRouter {
         const { user } = call.request.context as { user: User };
 
         if (!user) {
-            throw new GrpcError(status.UNAUTHENTICATED, 'Authentication required');
+            throw new GrpcError(
+                status.UNAUTHENTICATED,
+                'Authentication required',
+            );
         }
 
         if (user.role !== UserRole.ADMIN) {
@@ -50,7 +58,10 @@ export class BasicRouter {
         const { user } = call.request.context as { user: User };
 
         if (!user) {
-            throw new GrpcError(status.UNAUTHENTICATED, 'Authentication required');
+            throw new GrpcError(
+                status.UNAUTHENTICATED,
+                'Authentication required',
+            );
         }
 
         if (user.role !== UserRole.EMPLOYEE) {
@@ -68,7 +79,10 @@ export class BasicRouter {
         const { user } = call.request.context as { user: User };
 
         if (!user) {
-            throw new GrpcError(status.UNAUTHENTICATED, 'Authentication required');
+            throw new GrpcError(
+                status.UNAUTHENTICATED,
+                'Authentication required',
+            );
         }
 
         if (user.role !== UserRole.IT_STAFF) {
@@ -86,13 +100,13 @@ export class BasicRouter {
         const { user } = call.request.context as { user: User };
 
         if (!user) {
-            throw new GrpcError(status.UNAUTHENTICATED, 'Authentication required');
+            throw new GrpcError(
+                status.UNAUTHENTICATED,
+                'Authentication required',
+            );
         }
 
-        if (
-            user.role !== UserRole.ADMIN &&
-            user.role !== UserRole.EMPLOYEE
-        ) {
+        if (user.role !== UserRole.ADMIN && user.role !== UserRole.EMPLOYEE) {
             throw new GrpcError(
                 status.PERMISSION_DENIED,
                 'Endpoint requires admin or employee role',
@@ -119,8 +133,13 @@ export class BasicRouter {
                     'Example authenticated route (admin only) — demo for interns',
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
-            new ConduitRouteReturnDefinition('ExampleStatusResponse', 'example'),
-            this.equipmentHandlers.getExampleStatus.bind(this.equipmentHandlers),
+            new ConduitRouteReturnDefinition(
+                'ExampleStatusResponse',
+                'example',
+            ),
+            this.equipmentHandlers.getExampleStatus.bind(
+                this.equipmentHandlers,
+            ),
         );
         this.routingManager.route(
             {
@@ -136,7 +155,10 @@ export class BasicRouter {
                 },
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
-            new ConduitRouteReturnDefinition('CreateEquipmentResponse', 'example'),
+            new ConduitRouteReturnDefinition(
+                'CreateEquipmentResponse',
+                'example',
+            ),
             this.equipmentHandlers.createEquipment.bind(this.equipmentHandlers),
         );
         this.routingManager.route(
@@ -153,7 +175,8 @@ export class BasicRouter {
             {
                 path: '/equipment',
                 action: ConduitRouteActions.GET,
-                description: 'List equipment with optional filters and pagination',
+                description:
+                    'List equipment with optional filters and pagination',
                 queryParams: {
                     status: ConduitString.Optional,
                     availability: ConduitString.Optional,
@@ -176,7 +199,9 @@ export class BasicRouter {
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
             new ConduitRouteReturnDefinition('MarkReturnedResponse'),
-            this.equipmentHandlers.markReturnedEquipment.bind(this.equipmentHandlers),
+            this.equipmentHandlers.markReturnedEquipment.bind(
+                this.equipmentHandlers,
+            ),
         );
         this.routingManager.route(
             {
@@ -223,9 +248,9 @@ export class BasicRouter {
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
             new ConduitRouteReturnDefinition('UpdateAvailabilityResponse'),
-            this.equipmentHandlers.updateAvailability.bind(this.equipmentHandlers),
+            this.equipmentHandlers.updateAvailability.bind(
+                this.equipmentHandlers,
+            ),
         );
     }
 }
-
-

@@ -1,5 +1,5 @@
-import {EquipmentAvailability} from "@it-service/common-types/lib/enums/EquipmentAvailability.js";
-import {EquipmentStatus} from "@it-service/common-types/lib/enums/EquipmentStatus.js";
+import { EquipmentAvailability } from '@it-service/common-types/lib/enums/EquipmentAvailability.js';
+import { EquipmentStatus } from '@it-service/common-types/lib/enums/EquipmentStatus.js';
 
 export type EquipmentRecord = {
     _id: string;
@@ -11,4 +11,3 @@ export type EquipmentRecord = {
     createdAt?: string | Date;
     updatedAt?: string | Date;
 };
-
