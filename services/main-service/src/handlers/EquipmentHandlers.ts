@@ -16,6 +16,7 @@ import {ConduitObjectId} from "@conduitplatform/module-tools";
 import {TeamRecord} from "../types/Team.js";
 import { TeamName } from '@it-service/common-types/lib/enums/TeamName.js';
 import {getTeamByName} from "../utils/Teams.js";
+import { UserRole } from '@it-service/common-types/lib/enums/UserRole.js';
 
 /**
  * Example handler class: inject `grpcSdk`, read route context, use the database API.
@@ -114,6 +115,7 @@ export class EquipmentHandlers {
     async listEquipment(
         call: ParsedRouterRequest,
     ): Promise<UnparsedRouterResponse> {
+        const { user } = call.request.context as { user: User };
         const { status, availability, skip, limit } = call.request.queryParams as {
             status?: string;
             availability?: string;
@@ -145,6 +147,12 @@ export class EquipmentHandlers {
                 enumErrorMessage('Status', EquipmentStatus),
             );
         }
+        const teamName =
+            user.role === UserRole.ADMIN
+                ? TeamName.ADMINS
+                : TeamName.EMPLOYEES;
+
+        const team = await getTeamByName(this.grpcSdk, teamName);
 
         const equipment = await this.grpcSdk.database!.findMany<EquipmentRecord>(
             'Equipment',
@@ -154,10 +162,12 @@ export class EquipmentHandlers {
                     : {}),
                 ...(status ? { status: status as EquipmentStatus } : {}),
             },
-            {
-                ...(skip != null ? { skip } : {}),
-                ...(limit != null ? { limit } : {}),
-            },
+            undefined,
+            skip,
+            limit,
+            undefined,
+            user._id,
+            `Team:${team._id}`,
         );
 
         return {
@@ -174,10 +184,16 @@ export class EquipmentHandlers {
         const { id: equipmentId } = call.request.urlParams as {
             id: string;
         };
+        const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
+        const adminScope = `Team:${adminTeam._id}`;
 
         const existingEquipment = await this.grpcSdk.database!.findOne<EquipmentRecord>(
             'Equipment',
             { _id: equipmentId },
+            undefined,
+            undefined,
+            user._id,
+            adminScope,
         );
 
         if (!existingEquipment) {
@@ -197,6 +213,10 @@ export class EquipmentHandlers {
                 equipment: equipmentId,
                 requestStatus: LendingStatus.APPROVED,
             },
+            undefined,
+            undefined,
+            user._id,
+            adminScope,
         );
 
         const replacementEquipment = {
@@ -206,13 +226,15 @@ export class EquipmentHandlers {
             status: EquipmentStatus.AVAILABLE,
         };
 
-        const updatedEquipment = await this.grpcSdk.database!.findByIdAndReplace<EquipmentRecord>(
-            'Equipment',
-            equipmentId,
-            replacementEquipment,
-            undefined,
-            user._id,
-        );
+        const updatedEquipment =
+            await this.grpcSdk.database!.findByIdAndReplace<EquipmentRecord>(
+                'Equipment',
+                equipmentId,
+                replacementEquipment,
+                undefined,
+                user._id,
+                adminScope,
+            );
 
         const lendingUpdate: Partial<LendingRecord> = {
             requestStatus: LendingStatus.COMPLETED,
@@ -225,6 +247,7 @@ export class EquipmentHandlers {
                 lendingUpdate,
                 undefined,
                 user._id,
+                adminScope,
             )
             : undefined;
 
@@ -242,10 +265,16 @@ export class EquipmentHandlers {
         const { id: equipmentId } = call.request.urlParams as {
             id: string;
         };
+        const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
+        const adminScope = `Team:${adminTeam._id}`;
 
         const existingEquipment = await this.grpcSdk.database!.findOne<EquipmentRecord>(
             'Equipment',
             { _id: equipmentId },
+            undefined,
+            undefined,
+            user._id,
+            adminScope,
         );
 
         if (!existingEquipment) {
@@ -262,6 +291,7 @@ export class EquipmentHandlers {
             'Equipment',
             { _id: equipmentId },
             user._id,
+            adminScope,
         );
 
         return {
@@ -282,6 +312,8 @@ export class EquipmentHandlers {
             name?: string;
             description?: string;
         };
+        const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
+        const adminScope = `Team:${adminTeam._id}`;
 
         const update: Partial<EquipmentRecord> = {
             ...(name !== undefined ? { name } : {}),
@@ -302,6 +334,7 @@ export class EquipmentHandlers {
                 update,
                 undefined,
                 user._id,
+                adminScope,
             );
 
         if (!updatedEquipment) {
@@ -329,6 +362,9 @@ export class EquipmentHandlers {
             availability: string;
         };
 
+        const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
+        const adminScope = `Team:${adminTeam._id}`;
+
         if (
             !Object.values(EquipmentAvailability).includes(
                 availability as EquipmentAvailability,
@@ -344,6 +380,10 @@ export class EquipmentHandlers {
             await this.grpcSdk.database!.findOne<EquipmentRecord>(
                 'Equipment',
                 { _id: equipmentId },
+                undefined,
+                undefined,
+                user._id,
+                adminScope,
             );
 
         if (!existingEquipment) {
@@ -378,6 +418,7 @@ export class EquipmentHandlers {
                 replacementEquipment,
                 undefined,
                 user._id,
+                adminScope,
             );
 
         let updatedLending: LendingRecord | undefined;
@@ -390,6 +431,10 @@ export class EquipmentHandlers {
                         equipment: equipmentId,
                         requestStatus: LendingStatus.APPROVED,
                     },
+                    undefined,
+                    undefined,
+                    user._id,
+                    adminScope,
                 );
 
             updatedLending = activeLending
@@ -401,6 +446,7 @@ export class EquipmentHandlers {
                     },
                     undefined,
                     user._id,
+                    adminScope,
                 )
                 : undefined;
         }
