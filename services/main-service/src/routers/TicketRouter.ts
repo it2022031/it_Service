@@ -3,10 +3,15 @@ import {
     ConduitRouteActions,
     ConduitRouteReturnDefinition,
 } from '@conduitplatform/grpc-sdk';
-import { ConduitObjectId, ConduitString, RoutingManager } from '@conduitplatform/module-tools';
+import {
+    ConduitObjectId,
+    ConduitString,
+    RoutingManager,
+} from '@conduitplatform/module-tools';
 
 import { TicketHandlers } from '../handlers/index.js';
 import {
+    adminMiddleware,
     employeeMiddleware,
     itStaffMiddleware,
 } from '../middlewares/AuthMiddlewares.js';
@@ -31,6 +36,11 @@ export class TicketRouter {
         this.routingManager.middleware(
             { path: '/', name: 'ItStaffMiddleware' },
             itStaffMiddleware,
+        );
+
+        this.routingManager.middleware(
+            { path: '/', name: 'inAppAdminMiddleware' },
+            adminMiddleware,
         );
 
         this.routingManager.route(
@@ -70,6 +80,7 @@ export class TicketRouter {
             new ConduitRouteReturnDefinition('ViewAssignedTicketsResponse'),
             this.ticketHandlers.viewAssignedTickets.bind(this.ticketHandlers),
         );
+
         this.routingManager.route(
             {
                 path: '/tickets/:id/status',
@@ -86,6 +97,7 @@ export class TicketRouter {
             new ConduitRouteReturnDefinition('UpdateTicketStatusResponse'),
             this.ticketHandlers.updateTicketStatus.bind(this.ticketHandlers),
         );
+
         this.routingManager.route(
             {
                 path: '/tickets/:id/assign',
@@ -102,22 +114,7 @@ export class TicketRouter {
             new ConduitRouteReturnDefinition('AssignTicketResponse'),
             this.ticketHandlers.assignTicket.bind(this.ticketHandlers),
         );
-        this.routingManager.route(
-            {
-                path: '/tickets/:id/status',
-                action: ConduitRouteActions.PATCH,
-                description: 'Updates ticket status (IT staff only)',
-                urlParams: {
-                    id: ConduitObjectId.Required,
-                },
-                bodyParams: {
-                    status: ConduitString.Required,
-                },
-                middlewares: ['authMiddleware', 'ItStaffMiddleware'],
-            },
-            new ConduitRouteReturnDefinition('UpdateTicketStatusResponse'),
-            this.ticketHandlers.updateTicketStatus.bind(this.ticketHandlers),
-        );
+
         this.routingManager.route(
             {
                 path: '/tickets',

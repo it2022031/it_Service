@@ -183,7 +183,7 @@ export class TicketHandlers {
 
         await this.grpcSdk.authorization!.createRelation({
             subject: `User:${assignedTo}`,
-            relation: 'reader',
+            relation: 'owner',
             resource: `Ticket:${id}`,
         });
 
