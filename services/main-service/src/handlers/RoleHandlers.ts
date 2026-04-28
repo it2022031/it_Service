@@ -28,10 +28,8 @@ export class RoleHandlers {
         })) as User | null;
 
         return {
-            example: {
-                userId: user._id,
-                role: fullUser?.role ?? user.role,
-            },
+            userId: user._id,
+            role: fullUser?.role ?? user.role,
         };
     }
 }
