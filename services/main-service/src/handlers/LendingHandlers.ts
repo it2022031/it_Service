@@ -8,6 +8,7 @@ import { EquipmentRecord } from '../types/Equipment.js';
 import { User } from '@it-service/common-types/lib/User.js';
 import { LendingStatus } from '@it-service/common-types/lib/enums/LendingStatus.js';
 import { LendingRecord } from '../types/Lending.js';
+import { UserRole } from '@it-service/common-types/lib/enums/UserRole.js';
 export class LendingHandlers {
     constructor(private readonly grpcSdk: ConduitGrpcSdk) {}
 
@@ -34,13 +35,9 @@ export class LendingHandlers {
         const lending = await this.grpcSdk.database!.create<LendingRecord>(
             'Lending',
             lendingData,
+            user._id,
         );
 
-        await this.grpcSdk.authorization!.createRelation({
-            subject: `User:${user._id}`,
-            relation: 'reader',
-            resource: `Lending:${lending._id}`,
-        });
 
         await this.grpcSdk.authorization!.createRelation({
             subject: `Team:${itStaffTeam._id}`,
@@ -123,8 +120,11 @@ export class LendingHandlers {
             );
         }
 
-        const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
-        const adminScope = `Team:${adminTeam._id}`;
+        const teamName =
+            user.role === UserRole.ADMIN ? TeamName.ADMINS : TeamName.IT_STAFF;
+
+        const team = await getTeamByName(this.grpcSdk, teamName);
+        const scope = `Team:${team._id}`;
 
         const lending = await this.grpcSdk.database!.findOne<LendingRecord>(
             'Lending',
@@ -132,7 +132,7 @@ export class LendingHandlers {
             undefined,
             undefined,
             user._id,
-            adminScope,
+            scope,
         );
 
         if (!lending) {
@@ -158,7 +158,7 @@ export class LendingHandlers {
                 },
                 undefined,
                 user._id,
-                adminScope,
+                scope,
             );
 
         let updatedEquipment: EquipmentRecord | undefined;
@@ -180,7 +180,7 @@ export class LendingHandlers {
                     },
                     undefined,
                     user._id,
-                    adminScope,
+                    scope,
                 );
         }
 

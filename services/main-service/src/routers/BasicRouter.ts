@@ -2,10 +2,6 @@ import {
     ConduitGrpcSdk,
     ConduitRouteActions,
     ConduitRouteReturnDefinition,
-    GrpcError,
-    ParsedRouterRequest,
-    status,
-    UnparsedRouterResponse,
 } from '@conduitplatform/grpc-sdk';
 import {
     ConduitNumber,
@@ -13,10 +9,12 @@ import {
     ConduitString,
     RoutingManager,
 } from '@conduitplatform/module-tools';
-import { User } from '@it-service/common-types/lib/User.js';
-import { UserRole } from '@it-service/common-types/lib/enums/UserRole.js';
 
 import { EquipmentHandlers, RoleHandlers } from '../handlers/index.js';
+import {
+    adminMiddleware,
+    adminOrEmployeeMiddleware,
+} from '../middlewares/AuthMiddlewares.js';
 
 export class BasicRouter {
     private readonly equipmentHandlers: EquipmentHandlers;
@@ -31,120 +29,17 @@ export class BasicRouter {
         this.registerRoutes();
     }
 
-    private async inAppAdminMiddleware(
-        call: ParsedRouterRequest,
-    ): Promise<UnparsedRouterResponse> {
-        const { user } = call.request.context as { user: User };
-
-        if (!user) {
-            throw new GrpcError(
-                status.UNAUTHENTICATED,
-                'Authentication required',
-            );
-        }
-
-        if (user.role !== UserRole.ADMIN) {
-            throw new GrpcError(
-                status.PERMISSION_DENIED,
-                'Endpoint requires admin role',
-            );
-        }
-
-        return {};
-    }
-
-    private async EmployeeMiddleware(
-        call: ParsedRouterRequest,
-    ): Promise<UnparsedRouterResponse> {
-        const { user } = call.request.context as { user: User };
-
-        if (!user) {
-            throw new GrpcError(
-                status.UNAUTHENTICATED,
-                'Authentication required',
-            );
-        }
-
-        if (user.role !== UserRole.EMPLOYEE) {
-            throw new GrpcError(
-                status.PERMISSION_DENIED,
-                'Endpoint requires employee role',
-            );
-        }
-
-        return {};
-    }
-
-    private async ItStaffMiddleware(
-        call: ParsedRouterRequest,
-    ): Promise<UnparsedRouterResponse> {
-        const { user } = call.request.context as { user: User };
-
-        if (!user) {
-            throw new GrpcError(
-                status.UNAUTHENTICATED,
-                'Authentication required',
-            );
-        }
-
-        if (user.role !== UserRole.IT_STAFF) {
-            throw new GrpcError(
-                status.PERMISSION_DENIED,
-                'Endpoint requires it staff role',
-            );
-        }
-
-        return {};
-    }
-
-    private async AdminOrEmployeeMiddleware(
-        call: ParsedRouterRequest,
-    ): Promise<UnparsedRouterResponse> {
-        const { user } = call.request.context as { user: User };
-
-        if (!user) {
-            throw new GrpcError(
-                status.UNAUTHENTICATED,
-                'Authentication required',
-            );
-        }
-
-        if (user.role !== UserRole.ADMIN && user.role !== UserRole.EMPLOYEE) {
-            throw new GrpcError(
-                status.PERMISSION_DENIED,
-                'Endpoint requires admin or employee role',
-            );
-        }
-
-        return {};
-    }
-
     private registerRoutes() {
         this.routingManager.middleware(
             { path: '/', name: 'inAppAdminMiddleware' },
-            this.inAppAdminMiddleware.bind(this),
+            adminMiddleware,
         );
 
         this.routingManager.middleware(
             { path: '/', name: 'AdminOrEmployeeMiddleware' },
-            this.AdminOrEmployeeMiddleware.bind(this),
+            adminOrEmployeeMiddleware,
         );
-        this.routingManager.route(
-            {
-                path: '/example/status',
-                action: ConduitRouteActions.GET,
-                description:
-                    'Example authenticated route (admin only) — demo for interns',
-                middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
-            },
-            new ConduitRouteReturnDefinition(
-                'ExampleStatusResponse',
-                'example',
-            ),
-            this.equipmentHandlers.getExampleStatus.bind(
-                this.equipmentHandlers,
-            ),
-        );
+
         this.routingManager.route(
             {
                 path: '/equipment/create',
@@ -259,5 +154,6 @@ export class BasicRouter {
                 this.equipmentHandlers,
             ),
         );
+
     }
 }

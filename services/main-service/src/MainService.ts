@@ -1,7 +1,7 @@
 import { ConduitGrpcSdk, HealthCheckStatus } from '@conduitplatform/grpc-sdk';
 import { ManagedModule, RoutingManager } from '@conduitplatform/module-tools';
 
-import { BasicRouter, LendingRouter } from './routers/index.js';
+import { BasicRouter, LendingRouter, TicketRouter } from './routers/index.js';
 import { resources } from './resources/index.js';
 
 export default class MainService extends ManagedModule<void> {
@@ -10,6 +10,7 @@ export default class MainService extends ManagedModule<void> {
     private routingManager!: RoutingManager;
     private basicRouter!: BasicRouter;
     private lendingRouter!: LendingRouter;
+    private ticketRouter!: TicketRouter;
 
     constructor() {
         super('main-service');
@@ -41,6 +42,10 @@ export default class MainService extends ManagedModule<void> {
                 this.routingManager,
             );
             this.lendingRouter = new LendingRouter(
+                this.grpcSdk,
+                this.routingManager,
+            );
+            this.ticketRouter = new TicketRouter(
                 this.grpcSdk,
                 this.routingManager,
             );

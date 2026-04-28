@@ -2,16 +2,18 @@ import {
     ConduitGrpcSdk,
     ConduitRouteActions,
     ConduitRouteReturnDefinition,
-    GrpcError,
-    ParsedRouterRequest,
-    status,
-    UnparsedRouterResponse,
 } from '@conduitplatform/grpc-sdk';
-import { ConduitObjectId, ConduitString, RoutingManager } from '@conduitplatform/module-tools';
-import { User } from '@it-service/common-types/lib/User.js';
-import { UserRole } from '@it-service/common-types/lib/enums/UserRole.js';
+import {
+    ConduitObjectId,
+    ConduitString,
+    RoutingManager,
+} from '@conduitplatform/module-tools';
 
 import { LendingHandlers } from '../handlers/index.js';
+import {
+    employeeMiddleware,
+    itStaffOrAdminMiddleware,
+} from '../middlewares/AuthMiddlewares.js';
 
 export class LendingRouter {
     private readonly lendingHandlers: LendingHandlers;
@@ -24,60 +26,15 @@ export class LendingRouter {
         this.registerRoutes();
     }
 
-    private async EmployeeMiddleware(
-        call: ParsedRouterRequest,
-    ): Promise<UnparsedRouterResponse> {
-        const { user } = call.request.context as { user: User };
-
-        if (!user) {
-            throw new GrpcError(
-                status.UNAUTHENTICATED,
-                'Authentication required',
-            );
-        }
-
-        if (user.role !== UserRole.EMPLOYEE) {
-            throw new GrpcError(
-                status.PERMISSION_DENIED,
-                'Endpoint requires employee role',
-            );
-        }
-
-        return {};
-    }
-    private async ItStaffOrAdminMiddleware(
-        call: ParsedRouterRequest,
-    ): Promise<UnparsedRouterResponse> {
-        const { user } = call.request.context as { user: User };
-
-        if (!user) {
-            throw new GrpcError(
-                status.UNAUTHENTICATED,
-                'Authentication required',
-            );
-        }
-
-        if (
-            user.role !== UserRole.ADMIN &&
-            user.role !== UserRole.IT_STAFF
-        ) {
-            throw new GrpcError(
-                status.PERMISSION_DENIED,
-                'Endpoint requires admin or it staff role',
-            );
-        }
-
-        return {};
-    }
-
     private registerRoutes() {
         this.routingManager.middleware(
             { path: '/', name: 'EmployeeMiddleware' },
-            this.EmployeeMiddleware.bind(this),
+            employeeMiddleware,
         );
+
         this.routingManager.middleware(
             { path: '/', name: 'ItStaffOrAdminMiddleware' },
-            this.ItStaffOrAdminMiddleware.bind(this),
+            itStaffOrAdminMiddleware,
         );
 
         this.routingManager.route(
@@ -93,6 +50,7 @@ export class LendingRouter {
             new ConduitRouteReturnDefinition('CreateLendingResponse'),
             this.lendingHandlers.createLending.bind(this.lendingHandlers),
         );
+
         this.routingManager.route(
             {
                 path: '/lendings/my',
@@ -103,6 +61,7 @@ export class LendingRouter {
             new ConduitRouteReturnDefinition('ViewOwnLendingRequestsResponse'),
             this.lendingHandlers.viewOwnRequests.bind(this.lendingHandlers),
         );
+
         this.routingManager.route(
             {
                 path: '/lendings',
@@ -113,6 +72,7 @@ export class LendingRouter {
             new ConduitRouteReturnDefinition('ViewAllLendingsResponse'),
             this.lendingHandlers.viewAllRequests.bind(this.lendingHandlers),
         );
+
         this.routingManager.route(
             {
                 path: '/lendings/:id/review',
@@ -130,5 +90,4 @@ export class LendingRouter {
             this.lendingHandlers.reviewRequest.bind(this.lendingHandlers),
         );
     }
-
 }
