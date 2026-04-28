@@ -52,6 +52,7 @@ export class BasicRouter {
 
         return {};
     }
+
     private async EmployeeMiddleware(
         call: ParsedRouterRequest,
     ): Promise<UnparsedRouterResponse> {
@@ -73,6 +74,7 @@ export class BasicRouter {
 
         return {};
     }
+
     private async ItStaffMiddleware(
         call: ParsedRouterRequest,
     ): Promise<UnparsedRouterResponse> {
@@ -94,6 +96,7 @@ export class BasicRouter {
 
         return {};
     }
+
     private async AdminOrEmployeeMiddleware(
         call: ParsedRouterRequest,
     ): Promise<UnparsedRouterResponse> {
@@ -121,6 +124,7 @@ export class BasicRouter {
             { path: '/', name: 'inAppAdminMiddleware' },
             this.inAppAdminMiddleware.bind(this),
         );
+
         this.routingManager.middleware(
             { path: '/', name: 'AdminOrEmployeeMiddleware' },
             this.AdminOrEmployeeMiddleware.bind(this),
@@ -155,12 +159,10 @@ export class BasicRouter {
                 },
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
-            new ConduitRouteReturnDefinition(
-                'CreateEquipmentResponse',
-                'example',
-            ),
+            new ConduitRouteReturnDefinition('CreateEquipmentResponse'),
             this.equipmentHandlers.createEquipment.bind(this.equipmentHandlers),
         );
+
         this.routingManager.route(
             {
                 path: '/user/role',
@@ -168,9 +170,10 @@ export class BasicRouter {
                 description: 'Returns current user role',
                 middlewares: ['authMiddleware'],
             },
-            new ConduitRouteReturnDefinition('GetUserRoleResponse', 'example'),
+            new ConduitRouteReturnDefinition('GetUserRoleResponse'),
             this.roleHandlers.getMyRole.bind(this.roleHandlers),
         );
+
         this.routingManager.route(
             {
                 path: '/equipment',
@@ -188,6 +191,7 @@ export class BasicRouter {
             new ConduitRouteReturnDefinition('ListEquipmentResponse'),
             this.equipmentHandlers.listEquipment.bind(this.equipmentHandlers),
         );
+
         this.routingManager.route(
             {
                 path: '/equipment/:id/mark-returned',
@@ -203,6 +207,7 @@ export class BasicRouter {
                 this.equipmentHandlers,
             ),
         );
+
         this.routingManager.route(
             {
                 path: '/equipment/:id',
@@ -216,6 +221,7 @@ export class BasicRouter {
             new ConduitRouteReturnDefinition('DeleteEquipmentResponse'),
             this.equipmentHandlers.deleteEquipment.bind(this.equipmentHandlers),
         );
+
         this.routingManager.route(
             {
                 path: '/equipment/:id',
@@ -234,6 +240,7 @@ export class BasicRouter {
             new ConduitRouteReturnDefinition('EditEquipmentResponse'),
             this.equipmentHandlers.editEquipment.bind(this.equipmentHandlers),
         );
+
         this.routingManager.route(
             {
                 path: '/equipment/:id/availability',

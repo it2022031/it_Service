@@ -1,5 +1,5 @@
 export enum TeamName {
-    ADMINS = 'Admins',
-    EMPLOYEES = 'Employees',
-    IT_STAFF = 'ItStaff',
+    ADMINS = 'admins',
+    EMPLOYEES = 'employees',
+    IT_STAFF = 'itStaff',
 }

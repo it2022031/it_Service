@@ -93,13 +93,8 @@ export class EquipmentHandlers {
             'Equipment',
             equipmentData,
             user._id,
+            `Team:${adminTeam._id}`,
         );
-
-        await this.grpcSdk.authorization!.createRelation({
-            subject: `Team:${adminTeam._id}`,
-            relation: 'owner',
-            resource: `Equipment:${equipment._id}`,
-        });
 
         await this.grpcSdk.authorization!.createRelation({
             subject: `Team:${employeesTeam._id}`,
