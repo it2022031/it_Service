@@ -152,6 +152,9 @@ export class LendingHandlers {
                 id,
                 {
                     requestStatus: requestStatus as LendingStatus,
+                    ...(requestStatus === LendingStatus.APPROVED
+                        ? { approvedAt: new Date() }
+                        : {}),
                 },
                 undefined,
                 user._id,
