@@ -4,4 +4,3 @@ export enum LendingStatus {
     DECLINED = 'declined',
     COMPLETED = 'completed',
 }
-

@@ -1,14 +1,24 @@
 import { ConduitGrpcSdk, HealthCheckStatus } from '@conduitplatform/grpc-sdk';
 import { ManagedModule, RoutingManager } from '@conduitplatform/module-tools';
 
-import { BasicRouter } from './routers/index.js';
+import { BasicRouter, LendingRouter, TicketRouter } from './routers/index.js';
 import { resources } from './resources/index.js';
+
+import {
+    adminMiddleware,
+    adminOrEmployeeMiddleware,
+    employeeMiddleware,
+    itStaffMiddleware,
+    itStaffOrAdminMiddleware,
+} from './middlewares/AuthMiddlewares.js';
 
 export default class MainService extends ManagedModule<void> {
     protected configSchema?: object;
     protected metricsSchema?: object;
     private routingManager!: RoutingManager;
     private basicRouter!: BasicRouter;
+    private lendingRouter!: LendingRouter;
+    private ticketRouter!: TicketRouter;
 
     constructor() {
         super('main-service');
@@ -30,11 +40,53 @@ export default class MainService extends ManagedModule<void> {
     async onRegister() {
         this.grpcSdk.monitorModule('router', async (serving) => {
             if (!serving) return;
-            this.routingManager = new RoutingManager(this.grpcSdk.router!, this.grpcServer);
+            this.routingManager = new RoutingManager(
+                this.grpcSdk.router!,
+                this.grpcServer,
+            );
             this.routingManager.clear();
-            this.basicRouter = new BasicRouter(this.grpcSdk, this.routingManager);
+            this.registerMiddlewares();
+            this.basicRouter = new BasicRouter(
+                this.grpcSdk,
+                this.routingManager,
+            );
+            this.lendingRouter = new LendingRouter(
+                this.grpcSdk,
+                this.routingManager,
+            );
+            this.ticketRouter = new TicketRouter(
+                this.grpcSdk,
+                this.routingManager,
+            );
+
             await this.routingManager.registerRoutes();
         });
+    }
+    private registerMiddlewares() {
+        this.routingManager.middleware(
+            { path: '/', name: 'EmployeeMiddleware' },
+            employeeMiddleware,
+        );
+
+        this.routingManager.middleware(
+            { path: '/', name: 'ItStaffMiddleware' },
+            itStaffMiddleware,
+        );
+
+        this.routingManager.middleware(
+            { path: '/', name: 'ItStaffOrAdminMiddleware' },
+            itStaffOrAdminMiddleware,
+        );
+
+        this.routingManager.middleware(
+            { path: '/', name: 'inAppAdminMiddleware' },
+            adminMiddleware,
+        );
+
+        this.routingManager.middleware(
+            { path: '/', name: 'AdminOrEmployeeMiddleware' },
+            adminOrEmployeeMiddleware,
+        );
     }
 
     private async setUpAuthz() {

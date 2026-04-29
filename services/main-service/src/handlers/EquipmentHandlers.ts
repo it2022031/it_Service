@@ -6,13 +6,15 @@ import {
     UnparsedRouterResponse,
 } from '@conduitplatform/grpc-sdk';
 import { User } from '@it-service/common-types/lib/User.js';
-import type {  LendingRecord } from '../types/Lending.js';
-import type {  EquipmentRecord  } from '../types/Equipment.js';
-import {EquipmentAvailability} from "@it-service/common-types/lib/enums/EquipmentAvailability.js";
-import {EquipmentStatus} from "@it-service/common-types/lib/enums/EquipmentStatus.js";
-import {LendingStatus} from "@it-service/common-types/lib/enums/LendingStatus.js";
-import {enumErrorMessage} from "../utils/ErrorMessage.js";
-import {ConduitObjectId} from "@conduitplatform/module-tools";
+import type { LendingRecord } from '../types/Lending.js';
+import type { EquipmentRecord } from '../types/Equipment.js';
+import { EquipmentAvailability } from '@it-service/common-types/lib/enums/EquipmentAvailability.js';
+import { EquipmentStatus } from '@it-service/common-types/lib/enums/EquipmentStatus.js';
+import { LendingStatus } from '@it-service/common-types/lib/enums/LendingStatus.js';
+import { enumErrorMessage } from '../utils/ErrorMessage.js';
+import { TeamName } from '@it-service/common-types/lib/enums/TeamName.js';
+import { getTeamByName } from '../utils/Teams.js';
+import { UserRole } from '@it-service/common-types/lib/enums/UserRole.js';
 
 /**
  * Example handler class: inject `grpcSdk`, read route context, use the database API.
@@ -28,10 +30,7 @@ export class EquipmentHandlers {
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };
 
-        const adminTeam = await this.grpcSdk.database!.findOne(
-            'Team',
-            { name: 'Admins' },
-        );
+        const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
 
         return {
             example: {
@@ -47,26 +46,28 @@ export class EquipmentHandlers {
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };
 
-        const {
-            name,
-            description,
-            availability,
-            status,
-        } = call.request.bodyParams as {
+        const { name, description, availability, status } = call.request
+            .bodyParams as {
             name: string;
             description: string;
             availability: string;
             status: string;
         };
 
-        if (!Object.values(EquipmentAvailability).includes(availability as EquipmentAvailability)) {
+        if (
+            !Object.values(EquipmentAvailability).includes(
+                availability as EquipmentAvailability,
+            )
+        ) {
             throw new GrpcError(
                 GrpcStatus.INVALID_ARGUMENT,
                 enumErrorMessage('Availability', EquipmentAvailability),
             );
         }
 
-        if (!Object.values(EquipmentStatus).includes(status as EquipmentStatus)) {
+        if (
+            !Object.values(EquipmentStatus).includes(status as EquipmentStatus)
+        ) {
             throw new GrpcError(
                 GrpcStatus.INVALID_ARGUMENT,
                 enumErrorMessage('Status', EquipmentStatus),
@@ -79,10 +80,25 @@ export class EquipmentHandlers {
             availability: availability as EquipmentAvailability,
             status: status as EquipmentStatus,
         };
-        const equipment = await this.grpcSdk.database!.create(
+
+        const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
+        const employeesTeam = await getTeamByName(
+            this.grpcSdk,
+            TeamName.EMPLOYEES,
+        );
+
+        const equipment = await this.grpcSdk.database!.create<EquipmentRecord>(
             'Equipment',
             equipmentData,
+            user._id,
+            `Team:${adminTeam._id}`,
         );
+
+        await this.grpcSdk.authorization!.createRelation({
+            subject: `Team:${employeesTeam._id}`,
+            relation: 'reader',
+            resource: `Equipment:${equipment._id}`,
+        });
 
         return {
             userId: user._id,
@@ -93,7 +109,9 @@ export class EquipmentHandlers {
     async listEquipment(
         call: ParsedRouterRequest,
     ): Promise<UnparsedRouterResponse> {
-        const { status, availability, skip, limit } = call.request.queryParams as {
+        const { user } = call.request.context as { user: User };
+        const { status, availability, skip, limit } = call.request
+            .queryParams as {
             status?: string;
             availability?: string;
             skip?: number;
@@ -115,29 +133,37 @@ export class EquipmentHandlers {
 
         if (
             status &&
-            !Object.values(EquipmentStatus).includes(
-                status as EquipmentStatus,
-            )
+            !Object.values(EquipmentStatus).includes(status as EquipmentStatus)
         ) {
             throw new GrpcError(
                 GrpcStatus.INVALID_ARGUMENT,
                 enumErrorMessage('Status', EquipmentStatus),
             );
         }
+        const teamName =
+            user.role === UserRole.ADMIN ? TeamName.ADMINS : TeamName.EMPLOYEES;
 
-        const equipment = await this.grpcSdk.database!.findMany<EquipmentRecord>(
-            'Equipment',
-            {
-                ...(availability
-                    ? { availability: availability as EquipmentAvailability }
-                    : {}),
-                ...(status ? { status: status as EquipmentStatus } : {}),
-            },
-            {
-                ...(skip != null ? { skip } : {}),
-                ...(limit != null ? { limit } : {}),
-            },
-        );
+        const team = await getTeamByName(this.grpcSdk, teamName);
+
+        const equipment =
+            await this.grpcSdk.database!.findMany<EquipmentRecord>(
+                'Equipment',
+                {
+                    ...(availability
+                        ? {
+                              availability:
+                                  availability as EquipmentAvailability,
+                          }
+                        : {}),
+                    ...(status ? { status: status as EquipmentStatus } : {}),
+                },
+                {
+                    ...(skip != null ? { skip } : {}),
+                    ...(limit != null ? { limit } : {}),
+                    userId: user._id,
+                    scope: `Team:${team._id}`,
+                },
+            );
 
         return {
             message: 'Equipment fetched successfully.',
@@ -153,11 +179,18 @@ export class EquipmentHandlers {
         const { id: equipmentId } = call.request.urlParams as {
             id: string;
         };
+        const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
+        const adminScope = `Team:${adminTeam._id}`;
 
-        const existingEquipment = await this.grpcSdk.database!.findOne<EquipmentRecord>(
-            'Equipment',
-            { _id: equipmentId },
-        );
+        const existingEquipment =
+            await this.grpcSdk.database!.findOne<EquipmentRecord>(
+                'Equipment',
+                { _id: equipmentId },
+                undefined,
+                undefined,
+                user._id,
+                adminScope,
+            );
 
         if (!existingEquipment) {
             throw new GrpcError(GrpcStatus.NOT_FOUND, 'Equipment not found');
@@ -170,28 +203,33 @@ export class EquipmentHandlers {
             );
         }
 
-        const activeLending = await this.grpcSdk.database!.findOne<LendingRecord>(
-            'Lending',
-            {
-                equipment: equipmentId,
-                requestStatus: LendingStatus.APPROVED,
-            },
-        );
+        const activeLending =
+            await this.grpcSdk.database!.findOne<LendingRecord>(
+                'Lending',
+                {
+                    equipment: equipmentId,
+                    requestStatus: LendingStatus.APPROVED,
+                },
+                undefined,
+                undefined,
+                user._id,
+                adminScope,
+            );
 
         const replacementEquipment = {
-            name: existingEquipment.name,
-            description: existingEquipment.description,
-            availability: existingEquipment.availability,
+            ...existingEquipment,
             status: EquipmentStatus.AVAILABLE,
         };
 
-        const updatedEquipment = await this.grpcSdk.database!.findByIdAndReplace<EquipmentRecord>(
-            'Equipment',
-            equipmentId,
-            replacementEquipment,
-            undefined,
-            user._id,
-        );
+        const updatedEquipment =
+            await this.grpcSdk.database!.findByIdAndReplace<EquipmentRecord>(
+                'Equipment',
+                equipmentId,
+                replacementEquipment,
+                undefined,
+                user._id,
+                adminScope,
+            );
 
         const lendingUpdate: Partial<LendingRecord> = {
             requestStatus: LendingStatus.COMPLETED,
@@ -199,12 +237,13 @@ export class EquipmentHandlers {
 
         const updatedLending = activeLending
             ? await this.grpcSdk.database!.findByIdAndUpdate<LendingRecord>(
-                'Lending',
-                activeLending._id,
-                lendingUpdate,
-                undefined,
-                user._id,
-            )
+                  'Lending',
+                  activeLending._id,
+                  lendingUpdate,
+                  undefined,
+                  user._id,
+                  adminScope,
+              )
             : undefined;
 
         return {
@@ -221,11 +260,18 @@ export class EquipmentHandlers {
         const { id: equipmentId } = call.request.urlParams as {
             id: string;
         };
+        const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
+        const adminScope = `Team:${adminTeam._id}`;
 
-        const existingEquipment = await this.grpcSdk.database!.findOne<EquipmentRecord>(
-            'Equipment',
-            { _id: equipmentId },
-        );
+        const existingEquipment =
+            await this.grpcSdk.database!.findOne<EquipmentRecord>(
+                'Equipment',
+                { _id: equipmentId },
+                undefined,
+                undefined,
+                user._id,
+                adminScope,
+            );
 
         if (!existingEquipment) {
             throw new GrpcError(GrpcStatus.NOT_FOUND, 'Equipment not found');
@@ -241,6 +287,7 @@ export class EquipmentHandlers {
             'Equipment',
             { _id: equipmentId },
             user._id,
+            adminScope,
         );
 
         return {
@@ -248,7 +295,157 @@ export class EquipmentHandlers {
             equipmentId,
         };
     }
+    async editEquipment(
+        call: ParsedRouterRequest,
+    ): Promise<UnparsedRouterResponse> {
+        const { user } = call.request.context as { user: User };
 
+        const { id: equipmentId } = call.request.urlParams as {
+            id: string;
+        };
+
+        const { name, description } = call.request.bodyParams as {
+            name?: string;
+            description?: string;
+        };
+        const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
+        const adminScope = `Team:${adminTeam._id}`;
+
+        const update: Partial<EquipmentRecord> = {
+            ...(name !== undefined ? { name } : {}),
+            ...(description !== undefined ? { description } : {}),
+        };
+
+        if (Object.keys(update).length === 0) {
+            throw new GrpcError(
+                GrpcStatus.INVALID_ARGUMENT,
+                'At least one field (name or description) must be provided',
+            );
+        }
+
+        const updatedEquipment =
+            await this.grpcSdk.database!.findByIdAndUpdate<EquipmentRecord>(
+                'Equipment',
+                equipmentId,
+                update,
+                undefined,
+                user._id,
+                adminScope,
+            );
+
+        if (!updatedEquipment) {
+            throw new GrpcError(GrpcStatus.NOT_FOUND, 'Equipment not found');
+        }
+
+        return {
+            message: 'Equipment updated successfully.',
+            equipment: updatedEquipment,
+        };
+    }
+    async updateAvailability(
+        call: ParsedRouterRequest,
+    ): Promise<UnparsedRouterResponse> {
+        const { user } = call.request.context as { user: User };
+
+        const { id: equipmentId } = call.request.urlParams as {
+            id: string;
+        };
+
+        const { availability } = call.request.bodyParams as {
+            availability: string;
+        };
+
+        const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
+        const adminScope = `Team:${adminTeam._id}`;
+
+        if (
+            !Object.values(EquipmentAvailability).includes(
+                availability as EquipmentAvailability,
+            )
+        ) {
+            throw new GrpcError(
+                GrpcStatus.INVALID_ARGUMENT,
+                enumErrorMessage('Availability', EquipmentAvailability),
+            );
+        }
+
+        const existingEquipment =
+            await this.grpcSdk.database!.findOne<EquipmentRecord>(
+                'Equipment',
+                { _id: equipmentId },
+                undefined,
+                undefined,
+                user._id,
+                adminScope,
+            );
+
+        if (!existingEquipment) {
+            throw new GrpcError(GrpcStatus.NOT_FOUND, 'Equipment not found');
+        }
+
+        const nextAvailability = availability as EquipmentAvailability;
+
+        if (existingEquipment.availability === nextAvailability) {
+            return {
+                message: 'Equipment availability is already set.',
+                equipment: existingEquipment,
+            };
+        }
+
+        const nextStatus =
+            nextAvailability === EquipmentAvailability.RETIRED
+                ? EquipmentStatus.UNAVAILABLE
+                : EquipmentStatus.AVAILABLE;
+
+        const replacementEquipment = {
+            ...existingEquipment,
+            availability: nextAvailability,
+            status: nextStatus,
+        };
+
+        const updatedEquipment =
+            await this.grpcSdk.database!.findByIdAndReplace<EquipmentRecord>(
+                'Equipment',
+                equipmentId,
+                replacementEquipment,
+                undefined,
+                user._id,
+                adminScope,
+            );
+
+        let updatedLending: LendingRecord | undefined;
+
+        if (nextAvailability === EquipmentAvailability.RETIRED) {
+            const activeLending =
+                await this.grpcSdk.database!.findOne<LendingRecord>(
+                    'Lending',
+                    {
+                        equipment: equipmentId,
+                        requestStatus: LendingStatus.APPROVED,
+                    },
+                    undefined,
+                    undefined,
+                    user._id,
+                    adminScope,
+                );
+
+            updatedLending = activeLending
+                ? await this.grpcSdk.database!.findByIdAndUpdate<LendingRecord>(
+                      'Lending',
+                      activeLending._id,
+                      {
+                          requestStatus: LendingStatus.COMPLETED,
+                      },
+                      undefined,
+                      user._id,
+                      adminScope,
+                  )
+                : undefined;
+        }
+        return {
+            message: 'Equipment availability updated successfully.',
+            equipment: updatedEquipment,
+            lending: updatedLending,
+        };
+    }
 }
-
-

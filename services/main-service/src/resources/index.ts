@@ -9,5 +9,3 @@ import type { Resource } from '@conduitplatform/grpc-sdk';
  * ```
  */
 export const resources: Resource[] = [];
-
-
