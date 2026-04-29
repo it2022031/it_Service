@@ -1,5 +1,6 @@
 import {
-    ConduitGrpcSdk, GrpcError,
+    ConduitGrpcSdk,
+    GrpcError,
     ParsedRouterRequest,
     UnparsedRouterResponse,
     status as GrpcStatus,

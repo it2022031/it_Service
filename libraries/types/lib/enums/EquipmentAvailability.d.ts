@@ -1,4 +1,4 @@
 export declare enum EquipmentAvailability {
-    ACTIVE = "active",
-    RETIRED = "retired"
+    ACTIVE = 'active',
+    RETIRED = 'retired',
 }

@@ -11,10 +11,7 @@ const getUser = (call: ParsedRouterRequest): User => {
     const { user } = call.request.context as { user: User };
 
     if (!user) {
-        throw new GrpcError(
-            status.UNAUTHENTICATED,
-            'Authentication required',
-        );
+        throw new GrpcError(status.UNAUTHENTICATED, 'Authentication required');
     }
 
     return user;

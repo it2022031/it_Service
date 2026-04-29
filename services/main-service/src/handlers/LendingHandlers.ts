@@ -1,4 +1,10 @@
-import { ConduitGrpcSdk, GrpcError, ParsedRouterRequest, UnparsedRouterResponse ,status as GrpcStatus } from '@conduitplatform/grpc-sdk';
+import {
+    ConduitGrpcSdk,
+    GrpcError,
+    ParsedRouterRequest,
+    UnparsedRouterResponse,
+    status as GrpcStatus,
+} from '@conduitplatform/grpc-sdk';
 import { EquipmentAvailability } from '@it-service/common-types/lib/enums/EquipmentAvailability.js';
 import { enumErrorMessage } from '../utils/ErrorMessage.js';
 import { EquipmentStatus } from '@it-service/common-types/lib/enums/EquipmentStatus.js';
@@ -11,8 +17,6 @@ import { LendingRecord } from '../types/Lending.js';
 import { UserRole } from '@it-service/common-types/lib/enums/UserRole.js';
 export class LendingHandlers {
     constructor(private readonly grpcSdk: ConduitGrpcSdk) {}
-
-
 
     async createLending(
         call: ParsedRouterRequest,
@@ -30,14 +34,16 @@ export class LendingHandlers {
         };
 
         const adminTeam = await getTeamByName(this.grpcSdk, TeamName.ADMINS);
-        const itStaffTeam = await getTeamByName(this.grpcSdk, TeamName.IT_STAFF);
+        const itStaffTeam = await getTeamByName(
+            this.grpcSdk,
+            TeamName.IT_STAFF,
+        );
 
         const lending = await this.grpcSdk.database!.create<LendingRecord>(
             'Lending',
             lendingData,
             user._id,
         );
-
 
         await this.grpcSdk.authorization!.createRelation({
             subject: `Team:${itStaffTeam._id}`,
@@ -190,6 +196,4 @@ export class LendingHandlers {
             equipment: updatedEquipment,
         };
     }
-
-
 }

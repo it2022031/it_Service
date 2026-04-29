@@ -154,6 +154,5 @@ export class BasicRouter {
                 this.equipmentHandlers,
             ),
         );
-
     }
 }
