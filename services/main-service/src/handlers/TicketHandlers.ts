@@ -16,7 +16,7 @@ import { UserRole } from '@it-service/common-types/lib/enums/UserRole.js';
 export class TicketHandlers {
     constructor(private readonly grpcSdk: ConduitGrpcSdk) {}
 
-    async createHisOwnTicket(
+    async createTicket(
         call: ParsedRouterRequest,
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };
@@ -52,7 +52,7 @@ export class TicketHandlers {
             ticket,
         };
     }
-    async viewHisOwnTickets(
+    async viewMyTickets(
         call: ParsedRouterRequest,
     ): Promise<UnparsedRouterResponse> {
         const { user } = call.request.context as { user: User };

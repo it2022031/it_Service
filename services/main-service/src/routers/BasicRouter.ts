@@ -11,10 +11,6 @@ import {
 } from '@conduitplatform/module-tools';
 
 import { EquipmentHandlers, RoleHandlers } from '../handlers/index.js';
-import {
-    adminMiddleware,
-    adminOrEmployeeMiddleware,
-} from '../middlewares/AuthMiddlewares.js';
 
 export class BasicRouter {
     private readonly equipmentHandlers: EquipmentHandlers;
@@ -30,16 +26,6 @@ export class BasicRouter {
     }
 
     private registerRoutes() {
-        this.routingManager.middleware(
-            { path: '/', name: 'inAppAdminMiddleware' },
-            adminMiddleware,
-        );
-
-        this.routingManager.middleware(
-            { path: '/', name: 'AdminOrEmployeeMiddleware' },
-            adminOrEmployeeMiddleware,
-        );
-
         this.routingManager.route(
             {
                 path: '/equipment/create',
@@ -54,7 +40,11 @@ export class BasicRouter {
                 },
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
-            new ConduitRouteReturnDefinition('CreateEquipmentResponse'),
+            new ConduitRouteReturnDefinition('CreateEquipmentResponse', {
+                userId: ConduitObjectId.Required,
+                message: ConduitString.Required,
+                equipment: 'Equipment',
+            }),
             this.equipmentHandlers.createEquipment.bind(this.equipmentHandlers),
         );
 
@@ -65,7 +55,10 @@ export class BasicRouter {
                 description: 'Returns current user role',
                 middlewares: ['authMiddleware'],
             },
-            new ConduitRouteReturnDefinition('GetUserRoleResponse'),
+            new ConduitRouteReturnDefinition('GetUserRoleResponse', {
+                userId: ConduitObjectId.Required,
+                role: ConduitString.Required,
+            }),
             this.roleHandlers.getMyRole.bind(this.roleHandlers),
         );
 
@@ -83,7 +76,11 @@ export class BasicRouter {
                 },
                 middlewares: ['authMiddleware', 'AdminOrEmployeeMiddleware'],
             },
-            new ConduitRouteReturnDefinition('ListEquipmentResponse'),
+            new ConduitRouteReturnDefinition('ListEquipmentResponse', {
+                message: ConduitString.Required,
+                count: ConduitNumber.Required,
+                equipment: ['Equipment'],
+            }),
             this.equipmentHandlers.listEquipment.bind(this.equipmentHandlers),
         );
 
@@ -97,7 +94,11 @@ export class BasicRouter {
                 description: 'Marks equipment as returned',
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
-            new ConduitRouteReturnDefinition('MarkReturnedResponse'),
+            new ConduitRouteReturnDefinition('MarkReturnedResponse', {
+                message: ConduitString.Required,
+                equipment: 'Equipment',
+                lending: 'Lending',
+            }),
             this.equipmentHandlers.markReturnedEquipment.bind(
                 this.equipmentHandlers,
             ),
@@ -113,7 +114,10 @@ export class BasicRouter {
                 description: 'Deletes an equipment',
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
-            new ConduitRouteReturnDefinition('DeleteEquipmentResponse'),
+            new ConduitRouteReturnDefinition('DeleteEquipmentResponse', {
+                message: ConduitString.Required,
+                equipmentId: ConduitObjectId.Required,
+            }),
             this.equipmentHandlers.deleteEquipment.bind(this.equipmentHandlers),
         );
 
@@ -132,7 +136,10 @@ export class BasicRouter {
                 },
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
-            new ConduitRouteReturnDefinition('EditEquipmentResponse'),
+            new ConduitRouteReturnDefinition('EditEquipmentResponse', {
+                message: ConduitString.Required,
+                equipment: 'Equipment',
+            }),
             this.equipmentHandlers.editEquipment.bind(this.equipmentHandlers),
         );
 
@@ -149,7 +156,11 @@ export class BasicRouter {
                 },
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
-            new ConduitRouteReturnDefinition('UpdateAvailabilityResponse'),
+            new ConduitRouteReturnDefinition('UpdateAvailabilityResponse', {
+                message: ConduitString.Required,
+                equipment: 'Equipment',
+                lending: 'Lending',
+            }),
             this.equipmentHandlers.updateAvailability.bind(
                 this.equipmentHandlers,
             ),

@@ -4,6 +4,14 @@ import { ManagedModule, RoutingManager } from '@conduitplatform/module-tools';
 import { BasicRouter, LendingRouter, TicketRouter } from './routers/index.js';
 import { resources } from './resources/index.js';
 
+import {
+    adminMiddleware,
+    adminOrEmployeeMiddleware,
+    employeeMiddleware,
+    itStaffMiddleware,
+    itStaffOrAdminMiddleware,
+} from './middlewares/AuthMiddlewares.js';
+
 export default class MainService extends ManagedModule<void> {
     protected configSchema?: object;
     protected metricsSchema?: object;
@@ -37,6 +45,7 @@ export default class MainService extends ManagedModule<void> {
                 this.grpcServer,
             );
             this.routingManager.clear();
+            this.registerMiddlewares();
             this.basicRouter = new BasicRouter(
                 this.grpcSdk,
                 this.routingManager,
@@ -52,6 +61,32 @@ export default class MainService extends ManagedModule<void> {
 
             await this.routingManager.registerRoutes();
         });
+    }
+    private registerMiddlewares() {
+        this.routingManager.middleware(
+            { path: '/', name: 'EmployeeMiddleware' },
+            employeeMiddleware,
+        );
+
+        this.routingManager.middleware(
+            { path: '/', name: 'ItStaffMiddleware' },
+            itStaffMiddleware,
+        );
+
+        this.routingManager.middleware(
+            { path: '/', name: 'ItStaffOrAdminMiddleware' },
+            itStaffOrAdminMiddleware,
+        );
+
+        this.routingManager.middleware(
+            { path: '/', name: 'inAppAdminMiddleware' },
+            adminMiddleware,
+        );
+
+        this.routingManager.middleware(
+            { path: '/', name: 'AdminOrEmployeeMiddleware' },
+            adminOrEmployeeMiddleware,
+        );
     }
 
     private async setUpAuthz() {

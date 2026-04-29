@@ -4,16 +4,13 @@ import {
     ConduitRouteReturnDefinition,
 } from '@conduitplatform/grpc-sdk';
 import {
+    ConduitNumber,
     ConduitObjectId,
     ConduitString,
     RoutingManager,
 } from '@conduitplatform/module-tools';
 
 import { LendingHandlers } from '../handlers/index.js';
-import {
-    employeeMiddleware,
-    itStaffOrAdminMiddleware,
-} from '../middlewares/AuthMiddlewares.js';
 
 export class LendingRouter {
     private readonly lendingHandlers: LendingHandlers;
@@ -27,16 +24,6 @@ export class LendingRouter {
     }
 
     private registerRoutes() {
-        this.routingManager.middleware(
-            { path: '/', name: 'EmployeeMiddleware' },
-            employeeMiddleware,
-        );
-
-        this.routingManager.middleware(
-            { path: '/', name: 'ItStaffOrAdminMiddleware' },
-            itStaffOrAdminMiddleware,
-        );
-
         this.routingManager.route(
             {
                 path: '/lendings/create',
@@ -47,7 +34,10 @@ export class LendingRouter {
                 },
                 middlewares: ['authMiddleware', 'EmployeeMiddleware'],
             },
-            new ConduitRouteReturnDefinition('CreateLendingResponse'),
+            new ConduitRouteReturnDefinition('CreateLendingResponse', {
+                message: ConduitString.Required,
+                lending: 'Lending',
+            }),
             this.lendingHandlers.createLending.bind(this.lendingHandlers),
         );
 
@@ -58,7 +48,11 @@ export class LendingRouter {
                 description: 'Returns current employee lending requests',
                 middlewares: ['authMiddleware', 'EmployeeMiddleware'],
             },
-            new ConduitRouteReturnDefinition('ViewOwnLendingRequestsResponse'),
+            new ConduitRouteReturnDefinition('ViewOwnLendingRequestsResponse', {
+                message: ConduitString.Required,
+                count: ConduitNumber.Required,
+                lendings: ['Lending'],
+            }),
             this.lendingHandlers.viewOwnRequests.bind(this.lendingHandlers),
         );
 
@@ -69,7 +63,11 @@ export class LendingRouter {
                 description: 'Returns all lending requests (admin & it staff)',
                 middlewares: ['authMiddleware', 'ItStaffOrAdminMiddleware'],
             },
-            new ConduitRouteReturnDefinition('ViewAllLendingsResponse'),
+            new ConduitRouteReturnDefinition('ViewAllLendingsResponse', {
+                message: ConduitString.Required,
+                count: ConduitNumber.Required,
+                lendings: ['Lending'],
+            }),
             this.lendingHandlers.viewAllRequests.bind(this.lendingHandlers),
         );
 
@@ -86,7 +84,11 @@ export class LendingRouter {
                 },
                 middlewares: ['authMiddleware', 'ItStaffOrAdminMiddleware'],
             },
-            new ConduitRouteReturnDefinition('ReviewLendingRequestResponse'),
+            new ConduitRouteReturnDefinition('ReviewLendingRequestResponse', {
+                message: ConduitString.Required,
+                lending: 'Lending',
+                equipment: 'Equipment',
+            }),
             this.lendingHandlers.reviewRequest.bind(this.lendingHandlers),
         );
     }

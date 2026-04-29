@@ -4,17 +4,13 @@ import {
     ConduitRouteReturnDefinition,
 } from '@conduitplatform/grpc-sdk';
 import {
+    ConduitNumber,
     ConduitObjectId,
     ConduitString,
     RoutingManager,
 } from '@conduitplatform/module-tools';
 
 import { TicketHandlers } from '../handlers/index.js';
-import {
-    adminMiddleware,
-    employeeMiddleware,
-    itStaffMiddleware,
-} from '../middlewares/AuthMiddlewares.js';
 
 export class TicketRouter {
     private readonly ticketHandlers: TicketHandlers;
@@ -28,21 +24,6 @@ export class TicketRouter {
     }
 
     private registerRoutes() {
-        this.routingManager.middleware(
-            { path: '/', name: 'EmployeeMiddleware' },
-            employeeMiddleware,
-        );
-
-        this.routingManager.middleware(
-            { path: '/', name: 'ItStaffMiddleware' },
-            itStaffMiddleware,
-        );
-
-        this.routingManager.middleware(
-            { path: '/', name: 'inAppAdminMiddleware' },
-            adminMiddleware,
-        );
-
         this.routingManager.route(
             {
                 path: '/tickets/create',
@@ -55,8 +36,11 @@ export class TicketRouter {
                 },
                 middlewares: ['authMiddleware', 'EmployeeMiddleware'],
             },
-            new ConduitRouteReturnDefinition('CreateTicketResponse'),
-            this.ticketHandlers.createHisOwnTicket.bind(this.ticketHandlers),
+            new ConduitRouteReturnDefinition('CreateTicketResponse', {
+                message: ConduitString.Required,
+                ticket: 'Ticket',
+            }),
+            this.ticketHandlers.createTicket.bind(this.ticketHandlers),
         );
 
         this.routingManager.route(
@@ -66,8 +50,12 @@ export class TicketRouter {
                 description: 'Returns current employee tickets',
                 middlewares: ['authMiddleware', 'EmployeeMiddleware'],
             },
-            new ConduitRouteReturnDefinition('ViewOwnTicketsResponse'),
-            this.ticketHandlers.viewHisOwnTickets.bind(this.ticketHandlers),
+            new ConduitRouteReturnDefinition('ViewOwnTicketsResponse', {
+                message: ConduitString.Required,
+                count: ConduitNumber.Required,
+                tickets: ['Ticket'],
+            }),
+            this.ticketHandlers.viewMyTickets.bind(this.ticketHandlers),
         );
 
         this.routingManager.route(
@@ -77,7 +65,11 @@ export class TicketRouter {
                 description: 'Returns tickets assigned to IT staff',
                 middlewares: ['authMiddleware', 'ItStaffMiddleware'],
             },
-            new ConduitRouteReturnDefinition('ViewAssignedTicketsResponse'),
+            new ConduitRouteReturnDefinition('ViewAssignedTicketsResponse', {
+                message: ConduitString.Required,
+                count: ConduitNumber.Required,
+                tickets: ['Ticket'],
+            }),
             this.ticketHandlers.viewAssignedTickets.bind(this.ticketHandlers),
         );
 
@@ -94,7 +86,9 @@ export class TicketRouter {
                 },
                 middlewares: ['authMiddleware', 'ItStaffMiddleware'],
             },
-            new ConduitRouteReturnDefinition('UpdateTicketStatusResponse'),
+            new ConduitRouteReturnDefinition('UpdateTicketStatusResponse', {
+                message: ConduitString.Required,
+            }),
             this.ticketHandlers.updateTicketStatus.bind(this.ticketHandlers),
         );
 
@@ -111,7 +105,9 @@ export class TicketRouter {
                 },
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
-            new ConduitRouteReturnDefinition('AssignTicketResponse'),
+            new ConduitRouteReturnDefinition('AssignTicketResponse', {
+                message: ConduitString.Required,
+            }),
             this.ticketHandlers.assignTicket.bind(this.ticketHandlers),
         );
 
@@ -122,7 +118,11 @@ export class TicketRouter {
                 description: 'Returns all tickets',
                 middlewares: ['authMiddleware', 'inAppAdminMiddleware'],
             },
-            new ConduitRouteReturnDefinition('ViewAllTicketsResponse'),
+            new ConduitRouteReturnDefinition('ViewAllTicketsResponse', {
+                message: ConduitString.Required,
+                count: ConduitNumber.Required,
+                tickets: ['Ticket'],
+            }),
             this.ticketHandlers.viewAllTickets.bind(this.ticketHandlers),
         );
     }

@@ -12,8 +12,6 @@ import { EquipmentAvailability } from '@it-service/common-types/lib/enums/Equipm
 import { EquipmentStatus } from '@it-service/common-types/lib/enums/EquipmentStatus.js';
 import { LendingStatus } from '@it-service/common-types/lib/enums/LendingStatus.js';
 import { enumErrorMessage } from '../utils/ErrorMessage.js';
-import { ConduitObjectId } from '@conduitplatform/module-tools';
-import { TeamRecord } from '../types/Team.js';
 import { TeamName } from '@it-service/common-types/lib/enums/TeamName.js';
 import { getTeamByName } from '../utils/Teams.js';
 import { UserRole } from '@it-service/common-types/lib/enums/UserRole.js';
@@ -219,9 +217,7 @@ export class EquipmentHandlers {
             );
 
         const replacementEquipment = {
-            name: existingEquipment.name,
-            description: existingEquipment.description,
-            availability: existingEquipment.availability,
+            ...existingEquipment,
             status: EquipmentStatus.AVAILABLE,
         };
 
@@ -402,8 +398,7 @@ export class EquipmentHandlers {
                 : EquipmentStatus.AVAILABLE;
 
         const replacementEquipment = {
-            name: existingEquipment.name,
-            description: existingEquipment.description,
+            ...existingEquipment,
             availability: nextAvailability,
             status: nextStatus,
         };
